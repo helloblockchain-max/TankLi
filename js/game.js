@@ -148,10 +148,10 @@ function gc() {
 
 // 渲染背景地形 (格子状泥地)
 function drawBackground() {
-    ctx.fillStyle = '#4a5c4e'; // 军绿色
+    ctx.fillStyle = GameConfig.currentBgColor || '#4a5c4e'; // 军绿色
     ctx.fillRect(0, 0, GameConfig.canvasWidth, GameConfig.canvasHeight);
 
-    ctx.strokeStyle = '#3d4c40';
+    ctx.strokeStyle = GameConfig.currentGridColor || '#3d4c40';
     ctx.lineWidth = 1;
     const gridSize = 100;
 

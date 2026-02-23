@@ -12,7 +12,8 @@ const LevelConfig = [
         duration: 30000,
         spawnRate: 2000,
         enemyPool: ["light", "light"],
-        mapSize: { w: 1600, h: 1200 } // 关卡特定地图尺寸
+        mapSize: { w: 1600, h: 1200 }, // 关卡特定地图尺寸
+        obstacles: 10 // 生成少量随机障碍物
     },
     {
         id: 2,
@@ -22,7 +23,9 @@ const LevelConfig = [
         duration: 40000,
         spawnRate: 1500,
         enemyPool: ["light", "medium"],
-        mapSize: { w: 2000, h: 1000 } // 狭长地图
+        mapSize: { w: 2000, h: 1000 }, // 狭长地图
+        obstacles: 20,
+        obsType: 'wall' // 墙体会阻挡子弹
     },
     {
         id: 3,
@@ -32,7 +35,9 @@ const LevelConfig = [
         duration: 50000,
         spawnRate: 1200,
         enemyPool: ["medium", "medium", "heavy"],
-        mapSize: { w: 2500, h: 2500 }
+        mapSize: { w: 2500, h: 2500 },
+        obstacles: 50,
+        obsType: 'tree'
     },
     {
         id: 4,
@@ -42,7 +47,10 @@ const LevelConfig = [
         duration: 50000,
         spawnRate: 1800,
         enemyPool: ["heavy", "heavy"],
-        mapSize: { w: 3000, h: 3000 }
+        mapSize: { w: 3000, h: 3000 },
+        obstacles: 30,
+        obsType: 'tree',
+        isIce: true // 特殊的冰面打滑物理机制
     },
     {
         id: 5,
@@ -52,7 +60,9 @@ const LevelConfig = [
         duration: 60000,
         spawnRate: 1000,
         enemyPool: ["light", "medium", "heavy"],
-        mapSize: { w: 2000, h: 3000 }
+        mapSize: { w: 2000, h: 3000 },
+        obstacles: 20,
+        obsType: 'wall'
     }
 ];
 
@@ -98,8 +108,8 @@ function updateLevelProgress(dt) {
     const timeDisplay = document.getElementById('level-timer-ui');
     if (timeDisplay) timeDisplay.innerText = "防线倒计时: " + Math.ceil(remainingTimer) + "s";
 
-    if (levelTimer >= currentConf.duration) {
-        // 完成本关，进入升级界面
+    if (levelTimer >= currentConf.duration && GameConfig.currentLevel < 5) {
+        // 完成本关，进入升级界面 (第五关打死BOSS才结束，不以时间结算)
         completeLevel();
     }
 }
@@ -162,13 +172,13 @@ function purchaseUpgrade(opt) {
 
     const p = GameState.playerTank;
 
-    // 简单应用升级属性（实装）
+    // 简单应用升级属性与特殊能力（实装）
     switch (opt.id) {
         case 't_armor': p.bounceProb += 0.3; break;
-        case 't_gun': p.damage += 50; p.bulletSpeed -= 2; break;
-        case 't_hp': p.maxHp += 100; p.hp += 100; break;
-        case 's_gun': p.fireRate /= 2; break;
-        case 's_engine': p.speed *= 1.5; break;
+        case 't_gun': p.damage += 30; p.bulletSpeed -= 2; p.hasAOE = true; break;
+        case 't_hp': p.maxHp += 100; p.hp += 100; p.hasRegen = true; break;
+        case 's_gun': p.fireRate /= 1.5; p.hasDualGuns = true; break;
+        case 's_engine': p.speed *= 1.2; p.hasDash = true; break;
         case 's_pierce': p.damage += 30; break;
     }
 
@@ -179,6 +189,7 @@ function purchaseUpgrade(opt) {
 
 function startNextLevel() {
     GameConfig.currentLevel++;
+    GameConfig.bossSpawned = false; // 重置boss状态
     const currentConf = LevelConfig[GameConfig.currentLevel - 1];
 
     document.getElementById('current-level').innerText = currentConf.id;
@@ -203,10 +214,40 @@ function showStoryBriefing(currentConf) {
     document.getElementById('briefing-title').innerText = `第 ${currentConf.id} 战区: ${currentConf.name}`;
     document.getElementById('briefing-text').innerText = currentConf.desc;
 
+    // 生成该关卡的障碍物
+    GameState.obstacles = [];
+    if (currentConf.obstacles) {
+        for (let i = 0; i < currentConf.obstacles; i++) {
+            let ox = Utils.random(100, GameConfig.mapSize.width - 100);
+            let oy = Utils.random(100, GameConfig.mapSize.height - 100);
+
+            // 避免生成在地图中心（玩家复活点附近）
+            let cx = GameConfig.mapSize.width / 2;
+            let cy = GameConfig.mapSize.height / 2;
+            if (Math.sqrt((ox - cx) ** 2 + (oy - cy) ** 2) < 200) {
+                ox += 400; // 偏移出安全区
+            }
+
+            let obsType = currentConf.obsType || 'wall';
+            GameState.obstacles.push(new Obstacle(ox, oy, {
+                type: obsType,
+                radius: Utils.random(30, 60),
+                destructible: true,
+                hp: obsType === 'tree' ? 50 : 200,
+                color: obsType === 'tree' ? '#2e7d32' : '#5d4037'
+            }));
+        }
+    }
+
+    // 注入冰面机制
+    GameConfig.isIce = currentConf.isIce === true;
+
     // 重置玩家位置到地图中心
     if (GameState.playerTank) {
         GameState.playerTank.x = GameConfig.mapSize.width / 2;
         GameState.playerTank.y = GameConfig.mapSize.height / 2;
+        GameState.playerTank.vx = 0;
+        GameState.playerTank.vy = 0;
     }
 }
 

@@ -21,6 +21,7 @@ const GameState = {
     playerTank: null,
     enemies: [],
     bullets: [],
+    obstacles: [], // 环境障碍物
     particles: [], // 用于跳弹火花、爆炸等特效
     keys: {
         ArrowUp: false,

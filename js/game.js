@@ -75,6 +75,17 @@ function updateHUD() {
 function spawnEnemyGenerator(dt) {
     if (GameConfig.isGameOver) return;
 
+    if (GameConfig.currentLevel === 5) {
+        if (!GameConfig.bossSpawned && levelTimer > 8000) {
+            GameConfig.bossSpawned = true;
+            // BOSS从屏幕顶端中央入场
+            GameState.enemies.push(new BossTank(GameConfig.mapSize.width / 2, 200));
+            // BOSS入场怒吼声
+            Assets.playSound('explosion', false, 0.8);
+        }
+        if (GameConfig.bossSpawned) return; // BOSS出来后，杂兵不再生成
+    }
+
     enemySpawnTimer += dt;
     if (enemySpawnTimer > GameConfig.enemySpawnRate) {
         enemySpawnTimer = 0;
@@ -109,6 +120,21 @@ function checkCollisionsAndDamage() {
 
     for (let b = GameState.bullets.length - 1; b >= 0; b--) {
         const bullet = GameState.bullets[b];
+        let collided = false;
+
+        // 检查子弹是否打到障碍物
+        for (let o = GameState.obstacles.length - 1; o >= 0; o--) {
+            const obs = GameState.obstacles[o];
+            if (obs.blocksBullets && Utils.checkCollision(bullet, obs)) {
+                obs.takeDamage(bullet.damage);
+                bullet.active = false;
+                collided = true;
+                triggerAOE(bullet); // 触发AOE
+                GameState.particles.push(new Particle(bullet.x, bullet.y, '#fff'));
+                break;
+            }
+        }
+        if (collided) continue;
 
         // 1. 玩家的子弹打到敌人
         if (bullet.isPlayer) {
@@ -117,6 +143,7 @@ function checkCollisionsAndDamage() {
                 if (Utils.checkCollision(bullet, enemy)) {
                     enemy.takeDamage(bullet.damage);
                     bullet.active = false; // 子弹消失
+                    triggerAOE(bullet); // 触发AOE
                     // 产生小型粒子
                     GameState.particles.push(new Particle(bullet.x, bullet.y, '#fff'));
                     break;
@@ -139,6 +166,40 @@ function checkCollisionsAndDamage() {
     }
 }
 
+// 高爆弹 AOE 结算
+function triggerAOE(bullet) {
+    if (!bullet.isAOE) return;
+
+    const aoeRadius = 80;
+    const aoeDamage = bullet.damage * 0.5; // 溅射伤害为 50%
+
+    // 生成大爆炸视觉特效
+    Assets.playSound('explosion', false, 0.4);
+    for (let i = 0; i < 30; i++) {
+        GameState.particles.push(new Particle(bullet.x, bullet.y, ['#ff5722', '#ff9800', '#ffeb3b'][Math.floor(Math.random() * 3)]));
+    }
+
+    // 找出所有在半径内的敌人并给予伤害
+    GameState.enemies.forEach(enemy => {
+        let dx = enemy.x - bullet.x;
+        let dy = enemy.y - bullet.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= aoeRadius + enemy.radius) {
+            enemy.takeDamage(aoeDamage);
+        }
+    });
+
+    // AOE也会破坏附近的障碍物
+    GameState.obstacles.forEach(obs => {
+        let dx = obs.x - bullet.x;
+        let dy = obs.y - bullet.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= aoeRadius + obs.radius) {
+            obs.takeDamage(aoeDamage);
+        }
+    });
+}
+
 function gameOver() {
     GameConfig.isGameOver = true;
     setTimeout(() => {
@@ -152,6 +213,7 @@ function gameOver() {
 function gc() {
     GameState.bullets = GameState.bullets.filter(b => b.active);
     GameState.enemies = GameState.enemies.filter(e => e.active);
+    GameState.obstacles = GameState.obstacles.filter(o => o.active);
     GameState.particles = GameState.particles.filter(p => p.active);
 }
 
@@ -225,7 +287,8 @@ function gameLoop(timestamp) {
         // 应用摄像机平移偏移量
         ctx.translate(-GameConfig.camera.x, -GameConfig.camera.y);
 
-        // 渲染顺序底到高：粒子底 -> 敌人/玩家 -> 子弹 -> 火花顶
+        // 渲染顺序底到高：底图网格(已画) -> 障碍物 -> 敌人/玩家 -> 子弹 -> 粒子特效
+        GameState.obstacles.forEach(o => o.draw(ctx));
         GameState.enemies.forEach(e => e.draw(ctx));
         if (GameState.playerTank) GameState.playerTank.draw(ctx);
         GameState.bullets.forEach(b => b.draw(ctx));

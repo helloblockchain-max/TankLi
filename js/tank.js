@@ -4,7 +4,7 @@
  */
 
 class Bullet {
-    constructor(x, y, angle, speed, damage, color, isPlayer) {
+    constructor(x, y, angle, speed, damage, color, isPlayer, isAOE = false) {
         this.x = x;
         this.y = y;
         this.angle = angle;
@@ -12,7 +12,8 @@ class Bullet {
         this.damage = damage;
         this.color = color;
         this.isPlayer = isPlayer; // true表示是玩家射出的，false表示敌人射出的
-        this.radius = 4;
+        this.isAOE = isAOE; // 特殊高爆弹
+        this.radius = isAOE ? 6 : 4; // 高爆弹大一点
         this.active = true;
     }
 
@@ -89,6 +90,17 @@ class PlayerTank {
         this.bulletColor = config.bulletColor;
         this.bounceProb = config.armorBounceProbability;
 
+        // 惯性与速度矢量 (为了冰面打滑和更平滑的移动)
+        this.vx = 0;
+        this.vy = 0;
+
+        // 特殊能力开关
+        this.hasAOE = false;
+        this.hasRegen = false;
+        this.hasDualGuns = false;
+        this.hasDash = false;
+        this.lastDashTime = 0;
+
         // 冷却计时器
         this.lastFireTime = 0;
     }
@@ -96,21 +108,62 @@ class PlayerTank {
     update() {
         if (this.hp <= 0) return;
 
-        // 1. 处理移动 (W/S 或 上/下)
-        let isMoving = false;
+        // 1. 处理移动输入 (W/S 或 上/下)
         const keys = GameState.keys;
+        let accel = 0;
+
         if (keys['w'] || keys['ArrowUp']) {
-            this.x += Math.cos(this.angle) * this.speed;
-            this.y += Math.sin(this.angle) * this.speed;
-            isMoving = true;
+            accel = this.speed * 0.1; // 加速度
         }
         if (keys['s'] || keys['ArrowDown']) {
-            this.x -= Math.cos(this.angle) * (this.speed * 0.6); // 倒车稍慢
-            this.y -= Math.sin(this.angle) * (this.speed * 0.6);
-            isMoving = true;
+            accel = -this.speed * 0.05; // 倒车加速度较小
+        }
+
+        // --- 冲刺技能 (Dash) ---
+        const now = Date.now();
+        if (this.hasDash && keys['Shift'] && now - this.lastDashTime > 3000) {
+            // 3秒冷却的冲刺
+            this.vx += Math.cos(this.angle) * this.speed * 4;
+            this.vy += Math.sin(this.angle) * this.speed * 4;
+            this.lastDashTime = now;
+            Assets.playSound('explosion', false, 0.1); // 借用爆炸声做音效
+            for (let i = 0; i < 5; i++) {
+                GameState.particles.push(new Particle(this.x, this.y, '#03a9f4', 'spark'));
+            }
+        }
+
+        // --- 应用速度矢量 ---
+        this.vx += Math.cos(this.angle) * accel;
+        this.vy += Math.sin(this.angle) * accel;
+
+        // --- 环境摩擦力 (正常地面 vs 冰面) ---
+        const friction = GameConfig.isIce ? 0.98 : 0.85; // 冰面摩擦力小，保留更多惯性 (打滑)
+        this.vx *= friction;
+        this.vy *= friction;
+
+        // 缓存当前位置用于还原碰撞
+        const oldX = this.x;
+        const oldY = this.y;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // --- 障碍物碰撞阻挡 ---
+        for (let o of GameState.obstacles) {
+            if (o.active && o.blocksMovement) {
+                if (Utils.checkCollision(this, o)) {
+                    // 撞到障碍物，退回原位并消除法向速度 (简单处理：全停)
+                    this.x = oldX;
+                    this.y = oldY;
+                    this.vx = 0;
+                    this.vy = 0;
+                    break;
+                }
+            }
         }
 
         // 2. 处理车体旋转 (A/D 或 左/右)
+        // 冰面上旋转会有点打滑（也可以让玩家难易自选，这里保持旋转正常，只平移打滑）
         if (keys['a'] || keys['ArrowLeft']) {
             this.angle -= this.turnSpeed;
         }
@@ -128,10 +181,15 @@ class PlayerTank {
         this.turretAngle = Math.atan2(mouseWorldY - this.y, mouseWorldX - this.x);
 
         // 4. 射击 (鼠标左键按下且冷却完毕)
-        const now = Date.now();
         if (GameState.mouse.isDown && now - this.lastFireTime > this.fireRate) {
             this.fire();
             this.lastFireTime = now;
+        }
+
+        // 5. 自动维修 (Regen)
+        if (this.hasRegen && this.hp < this.maxHp) {
+            this.hp += 0.02; // 每帧回血
+            if (this.hp > this.maxHp) this.hp = this.maxHp;
         }
     }
 
@@ -141,10 +199,26 @@ class PlayerTank {
         const spawnX = this.x + Math.cos(this.turretAngle) * barrelLength;
         const spawnY = this.y + Math.sin(this.turretAngle) * barrelLength;
 
-        const bullet = new Bullet(
-            spawnX, spawnY, this.turretAngle, this.bulletSpeed, this.damage, this.bulletColor, true
-        );
-        GameState.bullets.push(bullet);
+        if (this.hasDualGuns) {
+            // 双联装，稍微偏移两个子弹的角度或位置
+            const offsetAngle = Math.PI / 2;
+            const offsetDist = 8;
+
+            const b1X = spawnX + Math.cos(this.turretAngle + offsetAngle) * offsetDist;
+            const b1Y = spawnY + Math.sin(this.turretAngle + offsetAngle) * offsetDist;
+            const b2X = spawnX + Math.cos(this.turretAngle - offsetAngle) * offsetDist;
+            const b2Y = spawnY + Math.sin(this.turretAngle - offsetAngle) * offsetDist;
+
+            GameState.bullets.push(new Bullet(b1X, b1Y, this.turretAngle, this.bulletSpeed, this.damage, this.bulletColor, true, this.hasAOE));
+            GameState.bullets.push(new Bullet(b2X, b2Y, this.turretAngle, this.bulletSpeed, this.damage, this.bulletColor, true, this.hasAOE));
+        } else {
+            const bullet = new Bullet(
+                spawnX, spawnY, this.turretAngle, this.bulletSpeed, this.damage, this.bulletColor, true, this.hasAOE
+            );
+            GameState.bullets.push(bullet);
+        }
+
+        Assets.playSound('fire', false, 0.4);
     }
 
     takeDamage(amount) {

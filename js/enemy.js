@@ -169,3 +169,173 @@ class EnemyTank {
         ctx.restore(); // 恢复translate
     }
 }
+
+// 终极BOSS坦克
+class BossTank extends EnemyTank {
+    constructor(x, y) {
+        super(x, y, {
+            hp: 2000,
+            speed: 0.5,
+            damage: 60,
+            fireRate: 200, // 极高射速
+            color: '#c62828', // 暗红
+            reward: 1000
+        });
+
+        this.radius = 60; // 巨大体型
+        this.isBoss = true;
+
+        // 多炮塔系统: 主炮塔 + 两个副炮塔
+        this.subTurretAngle1 = 0;
+        this.subTurretAngle2 = 0;
+
+        this.attackPatternPhase = 0; // 0: tracking, 1: bullet hell
+        this.phaseTimer = 0;
+    }
+
+    update() {
+        if (!GameState.playerTank || GameState.playerTank.hp <= 0) return;
+
+        const player = GameState.playerTank;
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // 缓慢移动向玩家
+        let targetAngle = Math.atan2(dy, dx);
+        this.angle += (targetAngle - this.angle) * 0.02;
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+
+        this.x = Math.max(this.radius, Math.min(GameConfig.mapSize.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(GameConfig.mapSize.height - this.radius, this.y));
+
+        // 炮塔独立逻辑
+        this.phaseTimer += 16;
+        if (this.phaseTimer > 5000) {
+            this.attackPatternPhase = (this.attackPatternPhase + 1) % 2;
+            this.phaseTimer = 0;
+        }
+
+        if (this.attackPatternPhase === 0) {
+            // 阶段一：全炮塔集火玩家
+            this.turretAngle = targetAngle;
+            this.subTurretAngle1 = targetAngle + 0.2;
+            this.subTurretAngle2 = targetAngle - 0.2;
+        } else {
+            // 阶段二：弹幕洗地，炮塔自旋
+            this.turretAngle += 0.05;
+            this.subTurretAngle1 -= 0.08;
+            this.subTurretAngle2 += 0.08;
+        }
+
+        const now = Date.now();
+        if (now - this.lastFireTime > this.fireRate && dist < 1200) { // 超远射程
+            this.fireMulti();
+            this.lastFireTime = now;
+        }
+    }
+
+    fireMulti() {
+        // 主炮
+        this.spawnBullet(this.turretAngle, 6, this.damage);
+
+        // 副炮
+        if (this.attackPatternPhase === 1 || Math.random() < 0.3) {
+            this.spawnBullet(this.subTurretAngle1, 4, 15);
+            this.spawnBullet(this.subTurretAngle2, 4, 15);
+        }
+
+        Assets.playSound('fire', false, 0.5);
+    }
+
+    spawnBullet(angle, speed, dmg) {
+        const barrelLength = this.radius + 10;
+        const spawnX = this.x + Math.cos(angle) * barrelLength;
+        const spawnY = this.y + Math.sin(angle) * barrelLength;
+        // Boss 默认使用高爆AOE的标记
+        GameState.bullets.push(new Bullet(spawnX, spawnY, angle, speed, dmg, '#ffff00', false, true));
+    }
+
+    explode() {
+        super.explode();
+        // 游戏通关大爆
+        for (let i = 0; i < 100; i++) {
+            setTimeout(() => {
+                GameState.particles.push(new Particle(
+                    this.x + Utils.random(-this.radius, this.radius),
+                    this.y + Utils.random(-this.radius, this.radius),
+                    ['#ff9800', '#f44336', '#ffffff'][Math.floor(Math.random() * 3)]
+                ));
+                Assets.playSound('explosion', false, 0.5);
+            }, i * 50);
+        }
+
+        // 触发最终胜利逻辑
+        setTimeout(() => {
+            showVictoryScreen();
+        }, 6000); // 6秒后胜利，欣赏爆炸
+    }
+
+    draw(ctx) {
+        if (!this.active) return;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.save();
+        ctx.rotate(this.angle);
+
+        const img = Assets.images['enemy_boss'];
+        if (img) {
+            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        } else {
+            // 兜底六边形或巨无霸方块
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.radius, -this.radius + 10, this.radius * 2, this.radius * 2 - 20);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-this.radius - 10, -this.radius + 20, 10, this.radius * 2 - 40);
+            ctx.fillRect(this.radius, -this.radius + 20, 10, this.radius * 2 - 40);
+        }
+
+        ctx.restore();
+
+        // 绘制BOSS血条 (浮在上方)
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-this.radius, -this.radius - 20, this.radius * 2, 8);
+        ctx.fillStyle = '#4caf50';
+        const hpPercent = Math.max(0, this.hp / 2000);
+        ctx.fillRect(-this.radius, -this.radius - 20, this.radius * 2 * hpPercent, 8);
+
+        // 主炮塔
+        ctx.save();
+        ctx.rotate(this.turretAngle);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, -6, this.radius * 1.5, 12);
+        ctx.fillStyle = '#ff5252';
+        ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        // 副炮塔1
+        ctx.save();
+        ctx.translate(this.radius * 0.4, -this.radius * 0.4);
+        ctx.rotate(this.subTurretAngle1);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, -3, 30, 6);
+        ctx.fillStyle = '#777';
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        // 副炮塔2
+        ctx.save();
+        ctx.translate(this.radius * 0.4, this.radius * 0.4);
+        ctx.rotate(this.subTurretAngle2);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, -3, 30, 6);
+        ctx.fillStyle = '#777';
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        ctx.restore();
+    }
+}

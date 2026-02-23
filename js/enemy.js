@@ -103,6 +103,7 @@ class EnemyTank {
             spawnX, spawnY, this.turretAngle, bulletSpeed, this.damage, '#ff5252', false
         );
         GameState.bullets.push(bullet);
+        Assets.playSound('fire', false, 0.2); // 敌人声音轻一点
     }
 
     takeDamage(amount) {
@@ -118,6 +119,7 @@ class EnemyTank {
         // 增加资金
         GameConfig.funds += this.reward;
         updateHUD(); // 调用主程序的UI更新
+        Assets.playSound('explosion', false, 0.5);
 
         // 爆炸粒子
         for (let i = 0; i < 20; i++) {
@@ -128,35 +130,42 @@ class EnemyTank {
     draw(ctx) {
         if (!this.active) return;
 
-        // 车体
         ctx.save();
         ctx.translate(this.x, this.y);
+
+        ctx.save();
         ctx.rotate(this.angle);
 
-        // 履带
-        ctx.fillStyle = '#0a0a0a';
-        ctx.fillRect(-this.radius + 5, -this.radius - 5, this.radius * 2 - 10, 8);
-        ctx.fillRect(-this.radius + 5, this.radius - 3, this.radius * 2 - 10, 8);
+        // 尝试获取对应的敌人贴图
+        let key = 'enemy_light';
+        if (this.type === EnemyTypes.medium) key = 'enemy_medium';
+        if (this.type === EnemyTypes.heavy) key = 'enemy_heavy';
 
-        // 主体
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.radius, -this.radius + 5, this.radius * 2, this.radius * 2 - 10);
+        const img = Assets.images[key];
 
+        if (img) {
+            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        } else {
+            // 兜底方形
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.radius, -this.radius + 5, this.radius * 2, this.radius * 2 - 10);
+        }
         ctx.restore();
 
         // 炮塔
         ctx.save();
-        ctx.translate(this.x, this.y);
         ctx.rotate(this.turretAngle);
 
         // 炮管
         ctx.fillStyle = '#222';
-        ctx.fillRect(0, -2, this.radius * 1.2, 4); // 敌军炮管稍细短
+        ctx.fillRect(0, -2, this.radius * 1.2, 4);
 
-        // 炮塔本身 (方型或圆型)
+        // 炮塔本身 (如果图片带有炮塔，这部分可以在最终精磨美术时去掉。目前保留兜底炮塔)
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.radius * 0.5, -this.radius * 0.5, this.radius, this.radius);
 
         ctx.restore();
+
+        ctx.restore(); // 恢复translate
     }
 }

@@ -7,47 +7,52 @@ const LevelConfig = [
     {
         id: 1,
         name: "破晓突围",
-        desc: "晨雾弥漫的兵营废墟，轻微抵抗。目标：全歼所有轻型装甲车，积累本金。",
+        desc: "【军团长密令】\n“指挥官，我是老K。敌军昨晚突袭了我们的营地。\n现在大雾弥漫，是你突围的最佳时机。\n打垮挡路的那些破铜烂铁，活着出来！”",
         bgConfig: { color: "#4a5c4e", grid: "#3d4c40" },
-        duration: 30000, // 每关持续 30秒 简单演示
+        duration: 30000,
         spawnRate: 2000,
-        enemyPool: ["light", "light"]
+        enemyPool: ["light", "light"],
+        mapSize: { w: 1600, h: 1200 } // 关卡特定地图尺寸
     },
     {
         id: 2,
         name: "夺桥遗恨",
-        desc: "狭窄的石桥争夺战，遇到高机动的反装甲车。",
-        bgConfig: { color: "#3e2723", grid: "#4e342e" }, // 泥地
+        desc: "【前线侦察】\n“前方是我们必须夺下的石桥通道。\n敌军部署了高机动巡逻队。保持移动，不要被包抄！”",
+        bgConfig: { color: "#3e2723", grid: "#4e342e" },
         duration: 40000,
         spawnRate: 1500,
-        enemyPool: ["light", "medium"]
+        enemyPool: ["light", "medium"],
+        mapSize: { w: 2000, h: 1000 } // 狭长地图
     },
     {
         id: 3,
         name: "钢铁丛林",
-        desc: "泥泞的森林，装甲集群编队。",
-        bgConfig: { color: "#1b5e20", grid: "#2e7d32" }, // 深林绿
+        desc: "【战区通报】\n“进入深林腹地。雷达显示大量中型装甲正在逼近。\n稳扎稳打，不要陷入缠斗！”",
+        bgConfig: { color: "#1b5e20", grid: "#2e7d32" },
         duration: 50000,
         spawnRate: 1200,
-        enemyPool: ["medium", "medium", "heavy"]
+        enemyPool: ["medium", "medium", "heavy"],
+        mapSize: { w: 2500, h: 2500 }
     },
     {
         id: 4,
         name: "风雪阿登",
-        desc: "极寒天气打滑机制，遭遇精英虎王重坦伏击。",
-        bgConfig: { color: "#cfd8dc", grid: "#e0e0e0" }, // 冰雪白
+        desc: "【黑色预警】\n“暴风雪来了，前方冰面极度打滑。\n注意，敌方的王牌‘虎王’编队就潜伏在四周。\n利用跳弹风控机制生存下来！”",
+        bgConfig: { color: "#cfd8dc", grid: "#e0e0e0" },
         duration: 50000,
-        spawnRate: 1800, // 减慢刷新但都是重坦
-        enemyPool: ["heavy", "heavy"]
+        spawnRate: 1800,
+        enemyPool: ["heavy", "heavy"],
+        mapSize: { w: 3000, h: 3000 }
     },
     {
         id: 5,
-        name: "帝国毁灭 (最终战)",
-        desc: "杀入秘密兵工厂，摧毁终极防御工事。",
-        bgConfig: { color: "#212121", grid: "#b71c1c" }, // 钢铁厂内部红黑
+        name: "帝国毁灭",
+        desc: "【终局清算】\n“我们已经潜入敌军的中央兵工厂。\n没有退路了！全军出击，摧毁这里的一切！\n为了初中生的马蛋！”",
+        bgConfig: { color: "#212121", grid: "#b71c1c" },
         duration: 60000,
         spawnRate: 1000,
-        enemyPool: ["light", "medium", "heavy"] // BOSS战稍后实现为特例
+        enemyPool: ["light", "medium", "heavy"],
+        mapSize: { w: 2000, h: 3000 }
     }
 ];
 
@@ -79,9 +84,20 @@ function updateLevelProgress(dt) {
     GameConfig.currentBgColor = currentConf.bgConfig.color;
     GameConfig.currentGridColor = currentConf.bgConfig.grid;
     GameConfig.enemySpawnRate = currentConf.spawnRate;
+    if (currentConf.mapSize) {
+        GameConfig.mapSize = {
+            width: Math.max(window.innerWidth, currentConf.mapSize.w),
+            height: Math.max(window.innerHeight, currentConf.mapSize.h)
+        };
+    }
 
     // 更新关卡时间
     levelTimer += dt;
+    // 进度条或时间显示在HUD（可选功能）
+    const remainingTimer = Math.max(0, currentConf.duration - levelTimer) / 1000;
+    const timeDisplay = document.getElementById('level-timer-ui');
+    if (timeDisplay) timeDisplay.innerText = "防线倒计时: " + Math.ceil(remainingTimer) + "s";
+
     if (levelTimer >= currentConf.duration) {
         // 完成本关，进入升级界面
         completeLevel();
@@ -168,13 +184,33 @@ function startNextLevel() {
     document.getElementById('current-level').innerText = currentConf.id;
     document.getElementById('level-name').innerText = currentConf.name;
 
-    hideAllScreens();
-    document.getElementById('screen-hud').classList.remove('hidden');
-    document.getElementById('screen-hud').classList.add('active');
-
-    GameConfig.isPaused = false;
-    lastTime = performance.now();
+    // 播放关卡提示弹窗
+    showStoryBriefing(currentConf);
 }
+
+function showStoryBriefing(currentConf) {
+    hideAllScreens();
+    const briefingScreen = document.getElementById('screen-briefing');
+    if (!briefingScreen) {
+        // 兼容没有这个DOM的情况，直接开始
+        resumeGame();
+        return;
+    }
+
+    briefingScreen.classList.remove('hidden');
+    briefingScreen.classList.add('active');
+
+    document.getElementById('briefing-title').innerText = `第 ${currentConf.id} 战区: ${currentConf.name}`;
+    document.getElementById('briefing-text').innerText = currentConf.desc;
+
+    // 重置玩家位置到地图中心
+    if (GameState.playerTank) {
+        GameState.playerTank.x = GameConfig.mapSize.width / 2;
+        GameState.playerTank.y = GameConfig.mapSize.height / 2;
+    }
+}
+
+// resumeGame() is now inside game.js
 
 function showVictoryScreen() {
     hideAllScreens();

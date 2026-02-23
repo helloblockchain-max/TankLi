@@ -73,9 +73,26 @@
 
                 <!-- 动态跳弹提示文字容器 -->
                 <div id="ricochet-prompts"></div>
+
+                <!-- 关卡倒计时挂件 -->
+                <div id="level-timer-ui"
+                    style="position:absolute; top:80px; right:20px; font-weight:bold; color:#ffeb3b; text-shadow:0 0 5px #000; font-size:1.5rem;">
+                </div>
             </div>
 
-            <!-- 4. 升级/通关 界面 (后续实现) -->
+            <!-- 情节简报界面 (Phase 2新增) -->
+            <div id="screen-briefing" class="screen full-screen hidden">
+                <div class="briefing-box"
+                    style="background:#222; border:3px solid var(--border-color); padding: 40px; max-width: 600px; text-align: left;">
+                    <h2 id="briefing-title" style="color:var(--accent-gold); margin-bottom: 20px; font-size: 2rem;">
+                    </h2>
+                    <p id="briefing-text"
+                        style="font-size: 1.2rem; line-height: 1.8; white-space: pre-wrap; margin-bottom: 30px;"></p>
+                    <button class="btn primary-btn" onclick="resumeGame()">收到，出击！</button>
+                </div>
+            </div>
+
+            <!-- 4. 升级/通关 界面 -->
             <div id="screen-upgrade" class="screen full-screen hidden">
                 <h2>指挥部补给站</h2>
                 <div id="upgrade-options">
@@ -96,6 +113,7 @@
 
     <!-- 脚本加载顺序 -->
     <script src="js/engine.js"></script>
+    <script src="js/assets.js"></script>
     <script src="js/tank.js"></script>
     <script src="js/enemy.js"></script>
     <script src="js/level.js"></script>

@@ -118,12 +118,14 @@ class PlayerTank {
             this.angle += this.turnSpeed;
         }
 
-        // 边界限制
-        this.x = Math.max(this.radius, Math.min(GameConfig.canvasWidth - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(GameConfig.canvasHeight - this.radius, this.y));
+        // 防御越界 (改为地图大小)
+        this.x = Math.max(this.radius, Math.min(GameConfig.mapSize.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(GameConfig.mapSize.height - this.radius, this.y));
 
-        // 3. 炮塔永远瞄准鼠标位置
-        this.turretAngle = Math.atan2(GameState.mouse.y - this.y, GameState.mouse.x - this.x);
+        // 3. 炮塔永远瞄准鼠标位置 (计算时加上相机的偏移量)
+        const mouseWorldX = GameState.mouse.x + GameConfig.camera.x;
+        const mouseWorldY = GameState.mouse.y + GameConfig.camera.y;
+        this.turretAngle = Math.atan2(mouseWorldY - this.y, mouseWorldX - this.x);
 
         // 4. 射击 (鼠标左键按下且冷却完毕)
         const now = Date.now();
@@ -200,30 +202,31 @@ class PlayerTank {
     draw(ctx) {
         if (this.hp <= 0) return;
 
-        // 绘制车身履带
         ctx.save();
         ctx.translate(this.x, this.y);
+
+        // 1. 绘制车身底盘 (根据 this.angle 旋转)
+        ctx.save();
         ctx.rotate(this.angle);
 
-        // 左履带
-        ctx.fillStyle = '#111';
-        ctx.fillRect(-this.radius + 5, -this.radius - 5, this.radius * 2 - 10, 8);
-        // 右履带
-        ctx.fillRect(-this.radius + 5, this.radius - 3, this.radius * 2 - 10, 8);
-
-        // 车身主体
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.radius, -this.radius + 5, this.radius * 2, this.radius * 2 - 10);
-
+        const img = Assets.images[this.type];
+        if (img) {
+            // 假设贴图默认朝右(0度)，我们需要调整如果贴图原本是朝上的
+            // 这里统一将我们的逻辑角度 (-PI/2 为上) 直接应用
+            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        } else {
+            // 兜底绘制
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.radius, -this.radius + 5, this.radius * 2, this.radius * 2 - 10);
+        }
         ctx.restore();
 
-        // 绘制炮塔 (独立旋转中心)
+        // 2. 绘制炮塔 (根据 this.turretAngle 旋转)
         ctx.save();
-        ctx.translate(this.x, this.y);
         ctx.rotate(this.turretAngle);
 
         // 炮管
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = '#111';
         ctx.fillRect(0, -3, this.radius * 1.5, 6);
 
         // 炮塔圆顶
@@ -234,5 +237,7 @@ class PlayerTank {
         ctx.stroke();
 
         ctx.restore();
+
+        ctx.restore(); // 恢复到 translate 之前
     }
 }

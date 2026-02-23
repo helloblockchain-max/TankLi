@@ -6,8 +6,10 @@
 const GameConfig = {
     canvasWidth: window.innerWidth,
     canvasHeight: window.innerHeight,
+    camera: { x: 0, y: 0 },
+    mapSize: { width: window.innerWidth * 2, height: window.innerHeight * 2 }, // 大地图
     FPS: 60,
-    enemySpawnRate: 2000, // 初始敌人生成间隔(ms)
+    enemySpawnRate: 2000,  // 初始敌人生成间隔(ms)
     funds: 0,
     currentLevel: 1,
     isGameOver: false,
@@ -68,12 +70,12 @@ const Utils = {
     // 监听键盘按键
     initInput() {
         window.addEventListener('keydown', (e) => {
-            if(GameState.keys.hasOwnProperty(e.key)) GameState.keys[e.key] = true;
-            if(GameState.keys.hasOwnProperty(e.key.toLowerCase())) GameState.keys[e.key.toLowerCase()] = true;
+            if (GameState.keys.hasOwnProperty(e.key)) GameState.keys[e.key] = true;
+            if (GameState.keys.hasOwnProperty(e.key.toLowerCase())) GameState.keys[e.key.toLowerCase()] = true;
         });
         window.addEventListener('keyup', (e) => {
-            if(GameState.keys.hasOwnProperty(e.key)) GameState.keys[e.key] = false;
-            if(GameState.keys.hasOwnProperty(e.key.toLowerCase())) GameState.keys[e.key.toLowerCase()] = false;
+            if (GameState.keys.hasOwnProperty(e.key)) GameState.keys[e.key] = false;
+            if (GameState.keys.hasOwnProperty(e.key.toLowerCase())) GameState.keys[e.key.toLowerCase()] = false;
         });
 
         // 鼠标瞄准与开火
@@ -83,13 +85,13 @@ const Utils = {
         });
         window.addEventListener('mousedown', () => GameState.mouse.isDown = true);
         window.addEventListener('mouseup', () => GameState.mouse.isDown = false);
-        
+
         // 自动调整画布大小
         window.addEventListener('resize', () => {
             GameConfig.canvasWidth = window.innerWidth;
             GameConfig.canvasHeight = window.innerHeight;
             const canvas = document.getElementById('game-canvas');
-            if(canvas) {
+            if (canvas) {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
             }
@@ -103,7 +105,7 @@ const Utils = {
         let distance = Math.sqrt(dx * dx + dy * dy);
         return distance < circle1.radius + circle2.radius;
     },
-    
+
     // 生成范围内随机数
     random(min, max) {
         return Math.random() * (max - min) + min;

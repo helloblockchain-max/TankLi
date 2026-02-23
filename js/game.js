@@ -15,8 +15,18 @@ function init() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // 绑定开始按钮
-    document.getElementById('btn-enter').addEventListener('click', showGarage);
+    // 先进入加载状态
+    document.getElementById('brand-message').innerText = "加载资产中...";
+    Assets.loadAll(
+        (progress) => {
+            document.getElementById('brand-message').innerText = `加载战略物资: ${Math.floor(progress * 100)}%`;
+        },
+        () => {
+            document.getElementById('brand-message').innerText = "为初中生的马蛋制作";
+            document.getElementById('btn-enter').addEventListener('click', showGarage);
+            Assets.playSound('bgm_menu', true, 0.5); // 播放主菜单BGM
+        }
+    );
 }
 
 // UI 切换逻辑
@@ -40,7 +50,6 @@ function selectTank(tankType) {
     document.getElementById('screen-hud').classList.add('active'); // 虽然 HUD 不用 flex 但为了统一
 
     updateHUD();
-    startGameLoop();
 }
 
 // 更新界面数据
@@ -73,11 +82,11 @@ function spawnEnemyGenerator(dt) {
         // 随机四周边缘生成
         let x, y;
         if (Math.random() < 0.5) {
-            x = Math.random() < 0.5 ? -30 : GameConfig.canvasWidth + 30;
-            y = Math.random() * GameConfig.canvasHeight;
+            x = Math.random() < 0.5 ? -30 : GameConfig.mapSize.width + 30;
+            y = Math.random() * GameConfig.mapSize.height;
         } else {
-            x = Math.random() * GameConfig.canvasWidth;
-            y = Math.random() < 0.5 ? -30 : GameConfig.canvasHeight + 30;
+            x = Math.random() * GameConfig.mapSize.width;
+            y = Math.random() < 0.5 ? -30 : GameConfig.mapSize.height + 30;
         }
 
         // 根据关卡决定敌人类型权重
@@ -149,19 +158,40 @@ function gc() {
 // 渲染背景地形 (格子状泥地)
 function drawBackground() {
     ctx.fillStyle = GameConfig.currentBgColor || '#4a5c4e'; // 军绿色
+    // 只绘制画布大小，因为我们在改变视口
     ctx.fillRect(0, 0, GameConfig.canvasWidth, GameConfig.canvasHeight);
 
     ctx.strokeStyle = GameConfig.currentGridColor || '#3d4c40';
     ctx.lineWidth = 1;
     const gridSize = 100;
 
-    // 简单的网格背景增加速度感
-    for (let x = 0; x < GameConfig.canvasWidth; x += gridSize) {
+    // 根据相机偏移绘制网格
+    const offsetX = GameConfig.camera.x % gridSize;
+    const offsetY = GameConfig.camera.y % gridSize;
+
+    for (let x = -offsetX; x < GameConfig.canvasWidth; x += gridSize) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GameConfig.canvasHeight); ctx.stroke();
     }
-    for (let y = 0; y < GameConfig.canvasHeight; y += gridSize) {
+    for (let y = -offsetY; y < GameConfig.canvasHeight; y += gridSize) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GameConfig.canvasWidth, y); ctx.stroke();
     }
+}
+
+function updateCamera() {
+    if (!GameState.playerTank) return;
+    const p = GameState.playerTank;
+
+    // 摄像机镜头平滑跟随玩家中心
+    let targetX = p.x - GameConfig.canvasWidth / 2;
+    let targetY = p.y - GameConfig.canvasHeight / 2;
+
+    // 将镜头限制在地图边界内
+    targetX = Math.max(0, Math.min(GameConfig.mapSize.width - GameConfig.canvasWidth, targetX));
+    targetY = Math.max(0, Math.min(GameConfig.mapSize.height - GameConfig.canvasHeight, targetY));
+
+    // 渐变跟随插值
+    GameConfig.camera.x += (targetX - GameConfig.camera.x) * 0.1;
+    GameConfig.camera.y += (targetY - GameConfig.camera.y) * 0.1;
 }
 
 // 主渲染与更新循环
@@ -184,15 +214,24 @@ function gameLoop(timestamp) {
         checkCollisionsAndDamage();
         gc();
 
+        // 核心：推算摄像机位置
+        updateCamera();
+
         // --- 图像渲染 ---
         ctx.clearRect(0, 0, GameConfig.canvasWidth, GameConfig.canvasHeight);
         drawBackground();
+
+        ctx.save();
+        // 应用摄像机平移偏移量
+        ctx.translate(-GameConfig.camera.x, -GameConfig.camera.y);
 
         // 渲染顺序底到高：粒子底 -> 敌人/玩家 -> 子弹 -> 火花顶
         GameState.enemies.forEach(e => e.draw(ctx));
         if (GameState.playerTank) GameState.playerTank.draw(ctx);
         GameState.bullets.forEach(b => b.draw(ctx));
         GameState.particles.forEach(p => p.draw(ctx));
+
+        ctx.restore();
     }
 
     requestAnimationFrame(gameLoop);
@@ -203,5 +242,21 @@ function startGameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// 独立启动点
-window.onload = init;
+// The startup is now handled when clicking "收到，出击！" in resumeGame
+let loopStarted = false;
+
+function resumeGame() {
+    hideAllScreens();
+    document.getElementById('screen-hud').classList.remove('hidden');
+    document.getElementById('screen-hud').classList.add('active');
+
+    GameConfig.isPaused = false;
+
+    if (!loopStarted) {
+        Assets.playSound('bgm_battle', true, 0.4); // 播放战斗BGM
+        startGameLoop();
+        loopStarted = true;
+    } else {
+        lastTime = performance.now();
+    }
+}

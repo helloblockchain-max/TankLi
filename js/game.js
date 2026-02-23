@@ -41,15 +41,18 @@ function showGarage() {
     document.getElementById('screen-garage').classList.add('active');
 }
 
-// 玩家选择坦克投入战斗
 function selectTank(tankType) {
     GameState.playerTank = new PlayerTank(tankType);
 
-    hideAllScreens();
-    document.getElementById('screen-hud').classList.remove('hidden');
-    document.getElementById('screen-hud').classList.add('active'); // 虽然 HUD 不用 flex 但为了统一
+    // 初始化关卡并显示简报，由简报界面的按钮来真正启动 gameLoop
+    GameConfig.currentLevel = 1;
+    const currentConf = LevelConfig[0];
 
+    // 更新HUD初始数据
     updateHUD();
+
+    // 触发第一关的剧情简报
+    showStoryBriefing(currentConf);
 }
 
 // 更新界面数据

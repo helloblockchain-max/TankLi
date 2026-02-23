@@ -22,7 +22,7 @@ function init() {
             document.getElementById('brand-message').innerText = `加载战略物资: ${Math.floor(progress * 100)}%`;
         },
         () => {
-            document.getElementById('brand-message').innerText = "为初中生的马蛋制作";
+            document.getElementById('brand-message').innerText = "马蛋制作";
             document.getElementById('btn-enter').addEventListener('click', showGarage);
             Assets.playSound('bgm_menu', true, 0.5); // 播放主菜单BGM
         }

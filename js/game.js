@@ -220,17 +220,37 @@ function gc() {
     GameState.particles = GameState.particles.filter(p => p.active);
 }
 
-// 渲染背景地形 (格子状泥地)
+// 渲染背景地形 (无缝贴图)
 function drawBackground() {
-    ctx.fillStyle = GameConfig.currentBgColor || '#4a5c4e'; // 军绿色
-    // 只绘制画布大小，因为我们在改变视口
-    ctx.fillRect(0, 0, GameConfig.canvasWidth, GameConfig.canvasHeight);
+    // 根据环境选择贴图
+    let bgImg = Assets.images['bg_grass'];
+    if (GameConfig.isIce) bgImg = Assets.images['bg_snow'];
+    else if (GameConfig.currentLevel === 5) bgImg = Assets.images['bg_mud'];
 
-    ctx.strokeStyle = GameConfig.currentGridColor || '#3d4c40';
+    if (bgImg && bgImg.complete) {
+        // 使用 CanvasPattern 实现无缝平铺
+        if (!GameState.bgPattern || GameState.lastBgImg !== bgImg) {
+            GameState.bgPattern = ctx.createPattern(bgImg, 'repeat');
+            GameState.lastBgImg = bgImg;
+        }
+
+        ctx.save();
+        // 抵消相机偏移来绘制平铺背景
+        ctx.translate(-GameConfig.camera.x, -GameConfig.camera.y);
+        ctx.fillStyle = GameState.bgPattern;
+        // 绘制整个地图区域，而不是只绘制视口，这样大地图滚动时背景也是连贯的
+        ctx.fillRect(0, 0, GameConfig.mapSize.width, GameConfig.mapSize.height);
+        ctx.restore();
+    } else {
+        // 兜底纯色
+        ctx.fillStyle = GameConfig.currentBgColor || '#4a5c4e';
+        ctx.fillRect(0, 0, GameConfig.canvasWidth, GameConfig.canvasHeight);
+    }
+
+    // 绘制微弱的网格辅助线
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    const gridSize = 100;
-
-    // 根据相机偏移绘制网格
+    const gridSize = 200;
     const offsetX = GameConfig.camera.x % gridSize;
     const offsetY = GameConfig.camera.y % gridSize;
 

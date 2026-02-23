@@ -34,7 +34,7 @@ class EnemyTank {
     constructor(x, y, typeConf) {
         this.x = x;
         this.y = y;
-        this.radius = 20;
+        this.radius = 30;
         this.type = typeConf;
 
         this.hp = typeConf.hp;
@@ -136,15 +136,21 @@ class EnemyTank {
         ctx.save();
         ctx.rotate(this.angle);
 
-        // 尝试获取对应的敌人贴图
+        // 获取独立生成的超高清程序化模型贴图
         let key = 'enemy_light';
         if (this.type === EnemyTypes.medium) key = 'enemy_medium';
         if (this.type === EnemyTypes.heavy) key = 'enemy_heavy';
+        if (this.type === EnemyTypes.boss) key = 'enemy_boss';
 
         const img = Assets.images[key];
 
         if (img) {
-            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+            // 根据坦克类型稍微调整显示大小
+            let scaleMultiplier = 2.8;
+            if (this.type === EnemyTypes.heavy || this.type === EnemyTypes.boss) scaleMultiplier = 3.2;
+
+            const drawSize = this.radius * scaleMultiplier;
+            ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
         } else {
             // 兜底方形
             ctx.fillStyle = this.color;
@@ -152,21 +158,13 @@ class EnemyTank {
         }
         ctx.restore();
 
-        // 炮塔
-        ctx.save();
-        ctx.rotate(this.turretAngle);
-
-        // 炮管
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, -2, this.radius * 1.2, 4);
-
-        // 炮塔本身 (如果图片带有炮塔，这部分可以在最终精磨美术时去掉。目前保留兜底炮塔)
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.radius * 0.5, -this.radius * 0.5, this.radius, this.radius);
+        // **不再单独绘制通用炮塔**
+        // 因为我们的超高清程序化贴图已经在生成的图片内部把车身和炮管全画好了 (且指向0度)
+        // 旋转车身就已经连带炮塔旋转了。由于大部分AI敌人本来就没有独立的turretAngle追踪，
+        // 它们开火是直接朝向车身前方（或者简单计算），所以不需要独立炮塔。
+        // （如果未来要做智能敌人的独立炮塔，需要把程序化绘图拆分开）
 
         ctx.restore();
-
-        ctx.restore(); // 恢复translate
     }
 }
 

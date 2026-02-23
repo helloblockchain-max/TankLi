@@ -11,13 +11,26 @@ const Assets = {
     // 定义要加载的资源清单 (占位图，后续可替换为精美素材)
     manifest: {
         images: {
-            'tiger': 'assets/img/tiger.png',
-            'sherman': 'assets/img/sherman.png',
-            'enemy_light': 'assets/img/enemy_light.png',
-            'enemy_medium': 'assets/img/enemy_medium.png',
-            'enemy_heavy': 'assets/img/enemy_heavy.png',
-            'bg_mud': 'assets/img/bg_mud.jpg',
-            'bg_snow': 'assets/img/bg_snow.jpg'
+            // 专业版素材 - 虎式组件
+            'tiger_body': 'assets/img/tiger_body.png',
+            'tiger_turret': 'assets/img/tiger_turret.png',
+            // 专业版素材 - 环境
+            'tree': 'assets/img/tree.png',
+
+            // 专业版素材 - 柔性地面
+            'bg_mud': 'assets/img/mud.png',
+            'bg_snow': 'assets/img/snow.png',
+            'bg_grass': 'assets/img/grass.png',
+
+            // 兼容原有 Key (虎式使用独立贴图，其他走高清程序化渲染)
+            'tiger': 'assets/img/tiger_body.png',
+
+            // 下列图片故意指向不存在的文件，触发onerror调用 createFallbackImage 进行超高清程序化渲染
+            'sherman': 'assets/img/missing.png',
+            'enemy_light': 'assets/img/missing_light.png',
+            'enemy_medium': 'assets/img/missing_medium.png',
+            'enemy_heavy': 'assets/img/missing_heavy.png',
+            'enemy_boss': 'assets/img/missing_boss.png'
         },
         audio: {
             'fire': 'assets/audio/fire.mp3',
@@ -78,124 +91,206 @@ const Assets = {
         }
     },
 
-    // 精细的Canvas写实坦克俯视图生成器
+    // 精细的Canvas写实坦克俯视图生成器 (修正为朝右 0度)
     createFallbackImage(key) {
-        const size = 128;
+        const size = 192;
         const c = document.createElement('canvas');
         c.width = size; c.height = size;
         const ctx = c.getContext('2d');
-        const cx = size / 2, cy = size / 2;
+        const cx = size / 2;
+        const cy = size / 2;
 
-        if (key.includes('bg')) {
-            // 背景纹理
-            ctx.fillStyle = key.includes('snow') ? '#c0c8cc' : '#4a5c4e';
-            ctx.fillRect(0, 0, size, size);
-            // 噪点
-            for (let i = 0; i < 300; i++) {
-                ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
-                ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-            }
-            const img = new Image(); img.src = c.toDataURL(); return img;
-        }
-
-        // --- 坦克配色方案 ---
         let hullColor, trackColor, accentColor, markingFn;
+        // 缩放因子，将原128px设计扩展到192px
+        const s = size / 128;
 
         if (key.includes('tiger')) {
-            hullColor = '#5c5c5c'; trackColor = '#3a3a3a'; accentColor = '#444';
+            hullColor = '#5e616b'; trackColor = '#2b2c30'; accentColor = '#6c707a';
             markingFn = () => {
-                // 德国十字
-                ctx.fillStyle = '#222'; ctx.fillRect(cx - 2, cy - 10, 4, 20);
-                ctx.fillRect(cx - 10, cy - 2, 20, 4);
+                // 铁十字
+                ctx.fillStyle = '#111';
+                ctx.fillRect(cx - 8 * s, cy - 10 * s, 16 * s, 20 * s);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(cx - 6 * s, cy - 8 * s, 12 * s, 16 * s);
+                ctx.fillStyle = '#111';
+                ctx.fillRect(cx - 4 * s, cy - 12 * s, 8 * s, 24 * s);
+                ctx.fillRect(cx - 10 * s, cy - 4 * s, 20 * s, 8 * s);
             };
         } else if (key.includes('sherman')) {
-            hullColor = '#4a6b3a'; trackColor = '#3a4a2a'; accentColor = '#5a7b4a';
+            hullColor = '#4a6b35'; trackColor = '#2a3a1a'; accentColor = '#5d7a45';
             markingFn = () => {
-                // 白星
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                // 大的五角白星
+                ctx.save();
+                ctx.fillStyle = 'rgba(255,255,255,0.75)';
                 ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
-                    const r = i % 2 === 0 ? 8 : 4;
-                    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+                const starCx = cx - 6 * s;
+                const starCy = cy;
+                const outerR = 12 * s;
+                const innerR = 5 * s;
+                for (let i = 0; i < 10; i++) {
+                    const a = (i * Math.PI / 5) - Math.PI / 2;
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    if (i === 0) ctx.moveTo(starCx + r * Math.cos(a), starCy + r * Math.sin(a));
+                    else ctx.lineTo(starCx + r * Math.cos(a), starCy + r * Math.sin(a));
                 }
+                ctx.closePath();
                 ctx.fill();
+                // 星星边框
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+
+                // 装甲板焊接线细节
+                ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx - 10 * s, cy - 16 * s);
+                ctx.lineTo(cx - 10 * s, cy + 16 * s);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(cx + 8 * s, cy - 16 * s);
+                ctx.lineTo(cx + 8 * s, cy + 16 * s);
+                ctx.stroke();
+
+                // 额外的工具箱
+                ctx.fillStyle = 'rgba(60,50,30,0.6)';
+                ctx.fillRect(cx - 22 * s, cy + 10 * s, 8 * s, 6 * s);
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeRect(cx - 22 * s, cy + 10 * s, 8 * s, 6 * s);
             };
         } else if (key.includes('boss')) {
-            hullColor = '#8b1a1a'; trackColor = '#4a0a0a'; accentColor = '#6b0000';
-            markingFn = () => { };
+            hullColor = '#3a0a0a'; trackColor = '#1a0505'; accentColor = '#5a0f0f';
+            markingFn = () => {
+                // 骷髅标记
+                ctx.fillStyle = 'rgba(255,50,50,0.5)';
+                ctx.beginPath();
+                ctx.arc(cx - 4 * s, cy, 8 * s, 0, Math.PI * 2);
+                ctx.fill();
+            };
         } else if (key.includes('heavy')) {
-            hullColor = '#9e9e9e'; trackColor = '#616161'; accentColor = '#757575';
-            markingFn = () => { };
+            hullColor = '#706e62'; trackColor = '#36352f'; accentColor = '#807d70';
+            markingFn = () => {
+                // 三道条纹
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(cx - 15 * s, cy - 4 * s, 30 * s, 2 * s);
+                ctx.fillRect(cx - 15 * s, cy + 2 * s, 30 * s, 2 * s);
+            };
         } else if (key.includes('medium')) {
-            hullColor = '#546e7a'; trackColor = '#37474f'; accentColor = '#455a64';
-            markingFn = () => { };
+            hullColor = '#5e7261'; trackColor = '#2d382e'; accentColor = '#6f8773';
+            markingFn = () => {
+                // 简单编号
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = `bold ${10 * s}px sans-serif`;
+                ctx.fillText('II', cx - 8 * s, cy + 4 * s);
+            };
         } else {
-            hullColor = '#6d4c41'; trackColor = '#4e342e'; accentColor = '#5d4037';
+            // Light
+            hullColor = '#806e52'; trackColor = '#403628'; accentColor = '#907d5d';
             markingFn = () => { };
         }
 
-        // --- 履带 (left/right tracks) ---
+        // --- 履带 (上方和下方, 因为车头朝右) ---
         ctx.fillStyle = trackColor;
-        ctx.fillRect(cx - 28, cy - 30, 12, 60); // 左履带
-        ctx.fillRect(cx + 16, cy - 30, 12, 60); // 右履带
-        // 履带纹理
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
-        for (let i = -28; i < 32; i += 6) {
+        ctx.fillRect(cx - 30 * s, cy - 26 * s, 64 * s, 12 * s);
+        ctx.fillRect(cx - 30 * s, cy + 14 * s, 64 * s, 12 * s);
+
+        // 履带纹理 (垂直线段)
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5 * s;
+        for (let i = -28; i < 32; i += 5) {
             ctx.beginPath();
-            ctx.moveTo(cx - 28, cy + i); ctx.lineTo(cx - 16, cy + i); ctx.stroke();
-            ctx.moveTo(cx + 16, cy + i); ctx.lineTo(cx + 28, cy + i); ctx.stroke();
+            ctx.moveTo(cx + i * s, cy - 26 * s); ctx.lineTo(cx + i * s, cy - 14 * s); ctx.stroke();
+            ctx.moveTo(cx + i * s, cy + 14 * s); ctx.lineTo(cx + i * s, cy + 26 * s); ctx.stroke();
         }
 
-        // --- 车体 ---
+        // 履带负重轮
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        for (let i = -24; i < 30; i += 12) {
+            ctx.beginPath(); ctx.arc(cx + i * s, cy - 20 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + i * s, cy + 20 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // --- 履带上的挡泥板 ---
         ctx.fillStyle = hullColor;
-        // 主体梯形
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(cx - 32 * s, cy - 28 * s, 68 * s, 6 * s);
+        ctx.fillRect(cx - 32 * s, cy + 22 * s, 68 * s, 6 * s);
+        ctx.globalAlpha = 1.0;
+
+        // --- 车体装甲 ---
+        ctx.fillStyle = hullColor;
         ctx.beginPath();
-        ctx.moveTo(cx - 18, cy - 25);
-        ctx.lineTo(cx + 18, cy - 25);
-        ctx.lineTo(cx + 22, cy - 15);
-        ctx.lineTo(cx + 22, cy + 20);
-        ctx.lineTo(cx + 18, cy + 28);
-        ctx.lineTo(cx - 18, cy + 28);
-        ctx.lineTo(cx - 22, cy + 20);
-        ctx.lineTo(cx - 22, cy - 15);
+        ctx.moveTo(cx - 25 * s, cy - 20 * s);
+        ctx.lineTo(cx + 22 * s, cy - 20 * s);
+        ctx.lineTo(cx + 28 * s, cy - 12 * s);
+        ctx.lineTo(cx + 28 * s, cy + 12 * s);
+        ctx.lineTo(cx + 22 * s, cy + 20 * s);
+        ctx.lineTo(cx - 25 * s, cy + 20 * s);
+        ctx.lineTo(cx - 30 * s, cy + 12 * s);
+        ctx.lineTo(cx - 30 * s, cy - 12 * s);
         ctx.closePath();
         ctx.fill();
 
-        // 车体阴影 (深色边缘)
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 2;
+        // 车体边缘阴影
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 2 * s;
         ctx.stroke();
 
-        // 车体高光
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
-        ctx.fillRect(cx - 15, cy - 22, 30, 12);
-
-        // --- 炮塔 ---
-        ctx.fillStyle = accentColor;
+        // 车体顶面高光
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.beginPath();
-        ctx.arc(cx, cy - 2, 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
-        ctx.stroke();
-        // 炮塔高光
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        ctx.beginPath();
-        ctx.arc(cx - 3, cy - 6, 8, 0, Math.PI * 2);
+        ctx.moveTo(cx - 20 * s, cy - 18 * s);
+        ctx.lineTo(cx + 18 * s, cy - 18 * s);
+        ctx.lineTo(cx + 24 * s, cy - 10 * s);
+        ctx.lineTo(cx - 10 * s, cy - 10 * s);
+        ctx.closePath();
         ctx.fill();
 
-        // --- 炮管 (朔右, 0度) ---
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(cx, cy - 4, 38, 5);
-        // 炮口火焰抑制器
-        ctx.fillRect(cx + 35, cy - 6, 5, 9);
+        // 引擎排气格栅 (左侧车尾)
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(cx - 24 * s, cy - 12 * s, 10 * s, 24 * s);
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1;
+        for (let j = -10; j <= 10; j += 4) {
+            ctx.beginPath(); ctx.moveTo(cx - 24 * s, cy + j * s); ctx.lineTo(cx - 14 * s, cy + j * s); ctx.stroke();
+        }
 
         // --- 标记 ---
         markingFn();
 
-        // --- 车体细节装饰（舱口） ---
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.beginPath(); ctx.arc(cx - 8, cy + 12, 4, 0, Math.PI * 2); ctx.fill(); // 驾驶舱
-        ctx.beginPath(); ctx.arc(cx + 8, cy + 12, 3, 0, Math.PI * 2); ctx.fill(); // 副驾驶
+        // 舱门细节
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.arc(cx + 12 * s, cy - 10 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 12 * s, cy + 10 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
+
+        // --- 炮塔 ---
+        ctx.fillStyle = accentColor;
+        ctx.beginPath();
+        ctx.arc(cx - 4 * s, cy, 14 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5 * s;
+        ctx.stroke();
+
+        // 炮塔高光
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath();
+        ctx.arc(cx - 8 * s, cy - 4 * s, 6 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 炮塔顶部舱盖
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.arc(cx - 6 * s, cy + 4 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
+
+        // --- 炮管 (朝右, 0度) ---
+        ctx.fillStyle = '#1c1c1c';
+        const gunLength = key.includes('light') ? 25 * s : (key.includes('heavy') || key.includes('boss') ? 45 * s : 35 * s);
+        const gunWidth = key.includes('heavy') || key.includes('boss') ? 8 * s : 6 * s;
+        ctx.fillRect(cx + 5 * s, cy - gunWidth / 2, gunLength, gunWidth);
+        // 炮口制退器
+        ctx.fillRect(cx + 5 * s + gunLength - 6 * s, cy - gunWidth / 2 - 2 * s, 6 * s, gunWidth + 4 * s);
+
+        // 炮管高光
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(cx + 5 * s, cy - gunWidth / 2 + 1, gunLength, 2 * s);
 
         const img = new Image();
         img.src = c.toDataURL();

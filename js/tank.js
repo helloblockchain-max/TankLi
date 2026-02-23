@@ -305,11 +305,13 @@ class PlayerTank {
         ctx.save();
         ctx.rotate(this.angle);
 
-        const img = Assets.images[this.type];
-        if (img) {
-            // 假设贴图默认朝右(0度)，我们需要调整如果贴图原本是朝上的
-            // 这里统一将我们的逻辑角度 (-PI/2 为上) 直接应用
-            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        // 优先使用专业版车身贴图
+        const bodyImg = this.type === 'tiger' ? Assets.images['tiger_body'] : Assets.images[this.type];
+
+        if (bodyImg) {
+            // 统一增大显示大小
+            const drawSize = this.radius * 3.0;
+            ctx.drawImage(bodyImg, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
         } else {
             // 兜底绘制
             ctx.fillStyle = this.color;
@@ -319,18 +321,46 @@ class PlayerTank {
 
         // 2. 绘制炮塔 (根据 this.turretAngle 旋转)
         ctx.save();
-        ctx.rotate(this.turretAngle);
 
-        // 炮管
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, -3, this.radius * 1.5, 6);
+        const turretImg = this.type === 'tiger' ? Assets.images['tiger_turret'] : null;
 
-        // 炮塔圆顶
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        // 修复贴图反向：如果使用特定贴图，可能需要旋转180度(Math.PI)来纠正炮管方向
+        if (turretImg) {
+            ctx.rotate(this.turretAngle + Math.PI); // 翻转炮塔
+            const drawSize = this.radius * 3.0; // 炮塔大小随车身放大
+            ctx.drawImage(turretImg, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        } else {
+            ctx.rotate(this.turretAngle);
+            // 兜底绘制炮塔
+            // 炮管 - 谢尔曼使用更细长的炮管
+            const gunWidth = this.type === 'sherman' ? 4 : 6;
+            const gunLength = this.type === 'sherman' ? this.radius * 1.8 : this.radius * 1.5;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, -gunWidth / 2, gunLength, gunWidth);
+            // 炮口制退器
+            ctx.fillRect(gunLength - 4, -gunWidth / 2 - 2, 5, gunWidth + 4);
+
+            // 炮管高光
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(0, -gunWidth / 2 + 1, gunLength, 1.5);
+
+            // 炮塔圆顶
+            const turretRadius = this.type === 'sherman' ? this.radius * 0.5 : this.radius * 0.6;
+            // 炮塔底色
+            ctx.fillStyle = this.type === 'sherman' ? '#4a6b35' : this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, turretRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // 炮塔边线
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // 炮塔高光
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.beginPath();
+            ctx.arc(-turretRadius * 0.3, -turretRadius * 0.3, turretRadius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         ctx.restore();
 

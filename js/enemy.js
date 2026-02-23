@@ -286,7 +286,8 @@ class BossTank extends EnemyTank {
 
         const img = Assets.images['enemy_boss'];
         if (img) {
-            ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+            const drawSize = this.radius * 3.8;
+            ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
         } else {
             // 兜底六边形或巨无霸方块
             ctx.fillStyle = this.color;

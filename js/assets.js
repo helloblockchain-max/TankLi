@@ -263,34 +263,36 @@ const Assets = {
         ctx.beginPath(); ctx.arc(cx + 12 * s, cy + 10 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
 
         // --- 炮塔 ---
-        ctx.fillStyle = accentColor;
-        ctx.beginPath();
-        ctx.arc(cx - 4 * s, cy, 14 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5 * s;
-        ctx.stroke();
+        if (!key.includes('boss')) {
+            ctx.fillStyle = accentColor;
+            ctx.beginPath();
+            ctx.arc(cx - 4 * s, cy, 14 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5 * s;
+            ctx.stroke();
 
-        // 炮塔高光
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.beginPath();
-        ctx.arc(cx - 8 * s, cy - 4 * s, 6 * s, 0, Math.PI * 2);
-        ctx.fill();
+            // 炮塔高光
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath();
+            ctx.arc(cx - 8 * s, cy - 4 * s, 6 * s, 0, Math.PI * 2);
+            ctx.fill();
 
-        // 炮塔顶部舱盖
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.beginPath(); ctx.arc(cx - 6 * s, cy + 4 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
+            // 炮塔顶部舱盖
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath(); ctx.arc(cx - 6 * s, cy + 4 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
 
-        // --- 炮管 (朝右, 0度) ---
-        ctx.fillStyle = '#1c1c1c';
-        const gunLength = key.includes('light') ? 25 * s : (key.includes('heavy') || key.includes('boss') ? 45 * s : 35 * s);
-        const gunWidth = key.includes('heavy') || key.includes('boss') ? 8 * s : 6 * s;
-        ctx.fillRect(cx + 5 * s, cy - gunWidth / 2, gunLength, gunWidth);
-        // 炮口制退器
-        ctx.fillRect(cx + 5 * s + gunLength - 6 * s, cy - gunWidth / 2 - 2 * s, 6 * s, gunWidth + 4 * s);
+            // --- 炮管 (朝右, 0度) ---
+            ctx.fillStyle = '#1c1c1c';
+            const gunLength = key.includes('light') ? 25 * s : (key.includes('heavy') ? 45 * s : 35 * s);
+            const gunWidth = key.includes('heavy') ? 8 * s : 6 * s;
+            ctx.fillRect(cx + 5 * s, cy - gunWidth / 2, gunLength, gunWidth);
+            // 炮口制退器
+            ctx.fillRect(cx + 5 * s + gunLength - 6 * s, cy - gunWidth / 2 - 2 * s, 6 * s, gunWidth + 4 * s);
 
-        // 炮管高光
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.fillRect(cx + 5 * s, cy - gunWidth / 2 + 1, gunLength, 2 * s);
+            // 炮管高光
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(cx + 5 * s, cy - gunWidth / 2 + 1, gunLength, 2 * s);
+        }
 
         const img = new Image();
         img.src = c.toDataURL();

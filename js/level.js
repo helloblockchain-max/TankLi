@@ -70,14 +70,14 @@ const LevelConfig = [
 // 升级系统投资面板
 const UpgradeTrees = {
     tiger: [
-        { id: 't_armor', name: '倾斜装甲锻造', desc: '提升30%基础跳弹率（高风控）', cost: 100 },
-        { id: 't_gun', name: '88mm高爆炮', desc: '提升巨额单发伤害，速度略减', cost: 200 },
-        { id: 't_hp', name: '战地维修槽', desc: '增加最大生命值+100', cost: 150 }
+        { id: 't_armor', name: '倾斜装甲锻造', desc: '提升30%基础跳弹率（高风控）', cost: 70 },
+        { id: 't_gun', name: '88mm高爆炮', desc: '提升巨额单发伤害，速度略减', cost: 140 },
+        { id: 't_hp', name: '战地维修槽', desc: '增加最大生命值+100', cost: 105 }
     ],
     sherman: [
-        { id: 's_gun', name: '双联装副炮', desc: '射速翻倍，形成弹幕网（高频交易）', cost: 100 },
-        { id: 's_engine', name: '涡轮超载', desc: '极大提升机动躲避导弹', cost: 150 },
-        { id: 's_pierce', name: '钨芯穿甲弹', desc: '对所有敌人造成额外+30伤害', cost: 200 }
+        { id: 's_gun', name: '双联装副炮', desc: '射速翻倍，形成弹幕网（高频交易）', cost: 70 },
+        { id: 's_engine', name: '涡轮超载', desc: '极大提升机动躲避导弹', cost: 105 },
+        { id: 's_pierce', name: '钨芯穿甲弹', desc: '对所有敌人造成额外+30伤害', cost: 140 }
     ]
 };
 
@@ -176,7 +176,7 @@ function purchaseUpgrade(opt) {
     // 简单应用升级属性与特殊能力（实装）
     switch (opt.id) {
         case 't_armor': p.bounceProb += 0.3; break;
-        case 't_gun': p.damage += 30; p.bulletSpeed -= 2; p.hasAOE = true; break;
+        case 't_gun': p.damage += 30; p.bulletSpeed = Math.max(4, p.bulletSpeed - 2); p.hasAOE = true; break;
         case 't_hp': p.maxHp += 100; p.hp += 100; p.hasRegen = true; break;
         case 's_gun': p.fireRate /= 1.5; p.hasDualGuns = true; break;
         case 's_engine': p.speed *= 1.2; p.hasDash = true; break;

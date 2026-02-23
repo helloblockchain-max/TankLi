@@ -128,51 +128,62 @@ class PlayerTank {
     update() {
         if (this.hp <= 0) return;
 
-        // 1. 处理移动输入 (W/S 或 上/下)
         const keys = GameState.keys;
-        let accel = 0;
-
-        if (keys['w'] || keys['ArrowUp']) {
-            accel = this.speed * 0.1; // 加速度
-        }
-        if (keys['s'] || keys['ArrowDown']) {
-            accel = -this.speed * 0.05; // 倒车加速度较小
-        }
-
-        // --- 冲刺技能 (Dash) ---
         const now = Date.now();
+
+        // === 1. 方向键直接控制移动方向 (8方向) ===
+        let moveX = 0, moveY = 0;
+        if (keys['ArrowUp'] || keys['w']) moveY = -1;
+        if (keys['ArrowDown'] || keys['s']) moveY = 1;
+        if (keys['ArrowLeft'] || keys['a']) moveX = -1;
+        if (keys['ArrowRight'] || keys['d']) moveX = 1;
+
+        // 归一化对角线速度
+        const moveMag = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (moveMag > 0) {
+            moveX /= moveMag;
+            moveY /= moveMag;
+
+            // 车体自动朝向移动方向（平滑插值）
+            const targetBodyAngle = Math.atan2(moveY, moveX);
+            let angleDiff = targetBodyAngle - this.angle;
+            // 归一化角度差到 [-PI, PI]
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            this.angle += angleDiff * 0.15; // 平滑转身
+
+            // 施加加速度
+            this.vx += moveX * this.speed * 0.12;
+            this.vy += moveY * this.speed * 0.12;
+        }
+
+        // === 冲刺技能 (Dash) ===
         if (this.hasDash && keys['Shift'] && now - this.lastDashTime > 3000) {
-            // 3秒冷却的冲刺
-            this.vx += Math.cos(this.angle) * this.speed * 4;
-            this.vy += Math.sin(this.angle) * this.speed * 4;
+            this.vx += moveX * this.speed * 5;
+            this.vy += moveY * this.speed * 5;
             this.lastDashTime = now;
-            Assets.playSound('explosion', false, 0.1); // 借用爆炸声做音效
+            Assets.playSound('explosion', false, 0.1);
             for (let i = 0; i < 5; i++) {
                 GameState.particles.push(new Particle(this.x, this.y, '#03a9f4', 'spark'));
             }
         }
 
-        // --- 应用速度矢量 ---
-        this.vx += Math.cos(this.angle) * accel;
-        this.vy += Math.sin(this.angle) * accel;
-
-        // --- 环境摩擦力 (正常地面 vs 冰面) ---
-        const friction = GameConfig.isIce ? 0.98 : 0.85; // 冰面摩擦力小，保留更多惯性 (打滑)
+        // === 环境摩擦力 ===
+        const friction = GameConfig.isIce ? 0.97 : 0.82;
         this.vx *= friction;
         this.vy *= friction;
 
-        // 缓存当前位置用于还原碰撞
+        // 缓存位置
         const oldX = this.x;
         const oldY = this.y;
 
         this.x += this.vx;
         this.y += this.vy;
 
-        // --- 障碍物碰撞阻挡 ---
+        // === 障碍物碰撞阻挡 ===
         for (let o of GameState.obstacles) {
             if (o.active && o.blocksMovement) {
                 if (Utils.checkCollision(this, o)) {
-                    // 撞到障碍物，退回原位并消除法向速度 (简单处理：全停)
                     this.x = oldX;
                     this.y = oldY;
                     this.vx = 0;
@@ -182,33 +193,24 @@ class PlayerTank {
             }
         }
 
-        // 2. 处理车体旋转 (A/D 或 左/右)
-        // 冰面上旋转会有点打滑（也可以让玩家难易自选，这里保持旋转正常，只平移打滑）
-        if (keys['a'] || keys['ArrowLeft']) {
-            this.angle -= this.turnSpeed;
-        }
-        if (keys['d'] || keys['ArrowRight']) {
-            this.angle += this.turnSpeed;
-        }
-
-        // 防御越界 (改为地图大小)
+        // === 边界限制 ===
         this.x = Math.max(this.radius, Math.min(GameConfig.mapSize.width - this.radius, this.x));
         this.y = Math.max(this.radius, Math.min(GameConfig.mapSize.height - this.radius, this.y));
 
-        // 3. 炮塔永远瞄准鼠标位置 (计算时加上相机的偏移量)
+        // === 2. 炮塔永远瞄准鼠标位置 ===
         const mouseWorldX = GameState.mouse.x + GameConfig.camera.x;
         const mouseWorldY = GameState.mouse.y + GameConfig.camera.y;
         this.turretAngle = Math.atan2(mouseWorldY - this.y, mouseWorldX - this.x);
 
-        // 4. 射击 (鼠标左键按下且冷却完毕)
+        // === 3. 射击 (鼠标左键) ===
         if (GameState.mouse.isDown && now - this.lastFireTime > this.fireRate) {
             this.fire();
             this.lastFireTime = now;
         }
 
-        // 5. 自动维修 (Regen)
+        // === 4. 自动维修 (Regen) ===
         if (this.hasRegen && this.hp < this.maxHp) {
-            this.hp += 0.02; // 每帧回血
+            this.hp += 0.02;
             if (this.hp > this.maxHp) this.hp = this.maxHp;
         }
     }

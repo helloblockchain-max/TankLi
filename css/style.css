@@ -1,0 +1,280 @@
+/* 基础重置 & 全局样式 */
+:root {
+    --bg-dark: #1a1a1a;
+    --text-light: #e0e0e0;
+    --accent-red: #d32f2f;
+    --accent-gold: #ffb300;
+    --accent-green: #388e3c;
+    --ui-bg: rgba(20, 20, 20, 0.9);
+    --border-color: #444;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', Courier, monospace; /* 复古军事风格字体 */
+    background-color: #000;
+    color: var(--text-light);
+    overflow: hidden; /* 防止网页滚动 */
+    user-select: none;
+}
+
+/* 游戏主容器 */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #2c3e50; /* 画布外背景 */
+}
+
+/* 游戏画布 */
+#game-canvas {
+    background-color: #4a5c4e; /* 默认草地/泥地颜色，后续通过代码绘制地形 */
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    display: block; /* 覆盖时可能有黑屏处理，现默认黑色 */
+}
+
+/* UI 覆盖层 */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 让鼠标事件穿透到 Canvas，除非子元素覆盖 */
+}
+
+/* 屏幕分发基类 */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto; /* UI 层需要点击 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.full-screen {
+    background-color: var(--ui-bg);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.active {
+    display: flex;
+}
+
+/* 按钮通用样式 */
+.btn {
+    padding: 12px 24px;
+    margin-top: 20px;
+    font-size: 1.2rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    color: #fff;
+    background-color: #333;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.btn:hover {
+    background-color: #555;
+    border-color: #777;
+    transform: scale(1.05);
+}
+
+.primary-btn {
+    background-color: var(--accent-red);
+    border-color: #b71c1c;
+}
+.primary-btn:hover {
+    background-color: #f44336;
+    border-color: #ffcdd2;
+}
+
+/* --- 1. 开始界面 & 动画 --- */
+#screen-start {
+    background: radial-gradient(circle, #2a2a2a 0%, #000000 100%);
+    text-align: center;
+}
+
+.vintage-typewriter {
+    margin-bottom: 40px;
+}
+
+#brand-message {
+    font-size: 3rem;
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: 3px solid var(--accent-gold);
+    width: 0;
+    /* 打字机特效：7个字大约用 2.5s */
+    animation: typing 2.5s steps(7, end) forwards,
+               blink-caret 0.75s step-end infinite;
+}
+
+.start-content {
+    opacity: 0;
+}
+
+.fade-in-delayed {
+    animation: fadeIn 2s ease-in 3s forwards; /* 延迟3秒，等打字机打完 */
+}
+
+.game-title {
+    font-size: 4rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+.subtitle {
+    font-size: 1.5rem;
+    color: #999;
+    margin-bottom: 30px;
+}
+
+/* --- 2. 车库界面 --- */
+#screen-garage h2 {
+    font-size: 3rem;
+    margin-bottom: 40px;
+    color: var(--accent-gold);
+}
+
+.tank-grid {
+    display: flex;
+    gap: 40px;
+}
+
+.tank-card {
+    background: #222;
+    border: 2px solid var(--border-color);
+    padding: 30px;
+    width: 350px;
+    text-align: center;
+    border-radius: 8px;
+    transition: transform 0.3s, border-color 0.3s;
+}
+
+.tank-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--accent-gold);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+}
+
+.tank-card h3 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.tank-card .stats {
+    list-style: none;
+    text-align: left;
+    margin: 20px 0;
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+/* --- 3. HUD 界面 --- */
+#screen-hud {
+    pointer-events: none; /* HUD 不阻挡鼠标 */
+    display: block; /* 覆盖 flex */
+}
+
+.hud-top-left {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.health-bar-container {
+    width: 250px;
+    height: 20px;
+    background-color: #333;
+    border: 2px solid #111;
+    margin-bottom: 5px;
+}
+
+.health-bar-fill {
+    width: 100%;
+    height: 100%;
+    background-color: var(--accent-green);
+    transition: width 0.2s, background-color 0.3s;
+}
+
+.hp-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.hud-top-right {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    text-align: right;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.currency {
+    color: var(--accent-gold);
+    margin-bottom: 5px;
+}
+
+/* 跳弹文字特效 */
+.ricochet-text {
+    position: absolute;
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.5rem;
+    text-shadow: 0 0 5px #ffeb3b, 0 0 10px #ff9800;
+    pointer-events: none;
+    animation: floatUp 1s ease-out forwards;
+}
+
+/* --- 动画 Keyframes --- */
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% } /* 宽度需由字数决定，7个中文字符约7em，我们在JS或CSS中可能需微调，这里用100%配合内容 */
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: var(--accent-gold) }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    50% { transform: translateY(-30px) scale(1.2); opacity: 0.8; }
+    100% { transform: translateY(-60px) scale(1); opacity: 0; }
+}

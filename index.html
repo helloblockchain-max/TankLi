@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>战区阿尔法：二战装甲风暴 (Warzone Alpha)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- 主游戏画布 -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI 层覆盖在画布上方 -->
+        <div id="ui-layer">
+
+            <!-- 1. 开始界面 / 品牌扉页 -->
+            <div id="screen-start" class="screen full-screen active">
+                <div class="vintage-typewriter">
+                    <h1 id="brand-message">为爸爸的马蛋制作</h1>
+                </div>
+                <div class="start-content fade-in-delayed">
+                    <h2 class="game-title">《战区阿尔法：二战装甲风暴》</h2>
+                    <p class="subtitle">WARZONE ALPHA: WWII ARMOR STORM</p>
+                    <button id="btn-enter" class="btn primary-btn">进入车库</button>
+                </div>
+            </div>
+
+            <!-- 2. 坦克选择界面 -->
+            <div id="screen-garage" class="screen full-screen hidden">
+                <h2>部署装甲部队</h2>
+                <div class="tank-grid">
+                    <div class="tank-card" data-tank="tiger">
+                        <h3>“虎式”重型坦克</h3>
+                        <p class="subtitle">价值投资流 / 稳健防御</p>
+                        <ul class="stats">
+                            <li>❤️ 装甲 (HP): 极高</li>
+                            <li>💥 火力 (DMG): 极高</li>
+                            <li>🐢 机动 (SPD): 缓慢</li>
+                            <li>🛡️ 特性: 高基础跳弹率</li>
+                        </ul>
+                        <button class="btn select-btn" onclick="selectTank('tiger')">选择此项</button>
+                    </div>
+                    <div class="tank-card" data-tank="sherman">
+                        <h3>“谢尔曼”中型坦克</h3>
+                        <p class="subtitle">成长投资流 / 高频机动</p>
+                        <ul class="stats">
+                            <li>❤️ 装甲 (HP): 脆弱</li>
+                            <li>💥 火力 (DMG): 低</li>
+                            <li>⚡ 机动 (SPD): 极快</li>
+                            <li>🔫 特性: 高射速弹幕</li>
+                        </ul>
+                        <button class="btn select-btn" onclick="selectTank('sherman')">选择此项</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 战斗中 HUD (Head-Up Display) -->
+            <div id="screen-hud" class="screen hidden">
+                <div class="hud-top-left">
+                    <div class="health-bar-container">
+                        <div id="health-bar" class="health-bar-fill"></div>
+                    </div>
+                    <div class="hp-text">HP: <span id="hp-val">100</span>/<span id="hp-max">100</span></div>
+                </div>
+                <div class="hud-top-right">
+                    <div class="currency">💰 战争债券: <span id="funds">0</span></div>
+                    <div class="level-indicator">关卡: <span id="current-level">1</span> - <span
+                            id="level-name">破晓突围</span></div>
+                </div>
+
+                <!-- 动态跳弹提示文字容器 -->
+                <div id="ricochet-prompts"></div>
+            </div>
+
+            <!-- 4. 升级/通关 界面 (后续实现) -->
+            <div id="screen-upgrade" class="screen full-screen hidden">
+                <h2>指挥部补给站</h2>
+                <div id="upgrade-options">
+                    <!-- 动态生成 -->
+                </div>
+                <button id="btn-next-level" class="btn primary-btn hidden">进入下一战区</button>
+            </div>
+
+            <!-- 5. 游戏结束界面 -->
+            <div id="screen-gameover" class="screen full-screen hidden">
+                <h1>车毁人亡</h1>
+                <p>市场无情，投资失败。</p>
+                <button class="btn" onclick="location.reload()">重新启动引擎</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 脚本加载顺序 -->
+    <script src="js/engine.js"></script>
+    <script src="js/tank.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/level.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>

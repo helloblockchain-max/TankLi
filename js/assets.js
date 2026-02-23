@@ -202,13 +202,122 @@ const Assets = {
         return img;
     },
 
+    initAudioContext() {
+        if (!this.audioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.audioCtx = new AudioContext();
+
+            // 主音量控制
+            this.masterGain = this.audioCtx.createGain();
+            this.masterGain.gain.value = 0.5;
+            this.masterGain.connect(this.audioCtx.destination);
+        }
+        if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+        }
+    },
+
     playSound(key, loop = false, volume = 1.0) {
-        if (!this.audio[key]) return;
-        // HTML5 Audio在重复播放同名音效时需要重置currentTime或克隆
-        const sound = this.audio[key].cloneNode();
-        sound.volume = volume;
-        sound.loop = loop;
-        sound.play().catch(e => console.warn('Autoplay prevented:', e));
-        return sound; // 返回对象以便控制停止 (如引擎声)
+        // 用户交互后初始化 AudioContext
+        this.initAudioContext();
+        if (!this.audioCtx) return;
+
+        const t = this.audioCtx.currentTime;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        gain.gain.setValueAtTime(0, t);
+
+        // --- 核心：程序化音效合成 ---
+        if (key === 'fire') {
+            // 射击音效：快速下降的频率和包络
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, t);
+            osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+
+            gain.gain.linearRampToValueAtTime(volume, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            osc.start(t);
+            osc.stop(t + 0.2);
+
+        } else if (key === 'explosion') {
+            // 爆炸：白噪声 + 低频正弦波 (此处用锯齿波+快速调制近似)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, t);
+            osc.frequency.exponentialRampToValueAtTime(10, t + 0.5);
+
+            // 添加一点不规则调制
+            const osc2 = this.audioCtx.createOscillator();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(50, t);
+            osc2.connect(gain);
+            osc2.start(t);
+            osc2.stop(t + 0.5);
+
+            gain.gain.linearRampToValueAtTime(volume * 1.5, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+            osc.start(t);
+            osc.stop(t + 0.5);
+
+        } else if (key === 'ricochet') {
+            // 跳弹：高频急促，带点金属质感 (三角波高音)
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1200, t);
+            osc.frequency.exponentialRampToValueAtTime(600, t + 0.1);
+
+            gain.gain.linearRampToValueAtTime(volume, t + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc.start(t);
+            osc.stop(t + 0.15);
+
+        } else if (key === 'bgm_menu') {
+            // 菜单背景音效：低频嗡嗡声营造军工氛围
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(60, t);
+            // 简单的低频LFO调制
+            const lfo = this.audioCtx.createOscillator();
+            lfo.type = 'sine';
+            lfo.frequency.value = 0.5;
+            const lfoGain = this.audioCtx.createGain();
+            lfoGain.gain.value = 20;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            lfo.start();
+
+            gain.gain.linearRampToValueAtTime(volume * 0.3, t + 2); // 缓入
+            osc.start(t);
+            // 如果是循环音效，返回用来停止的对象
+            return {
+                stop: () => {
+                    gain.gain.linearRampToValueAtTime(0.01, this.audioCtx.currentTime + 1);
+                    setTimeout(() => { osc.stop(); lfo.stop(); }, 1000);
+                }
+            };
+        } else if (key === 'bgm_battle') {
+            // 战斗背景音：紧张的低频脉冲
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(80, t);
+
+            gain.gain.setValueAtTime(0, t);
+
+            // 手动实现脉冲感 (在音频线程很难完美模拟复杂的曲子，所以用环境氛围音代替)
+            setInterval(() => {
+                if (osc.playbackState === osc.PLAYING_STATE) return; // 已停止的保护
+                const now = this.audioCtx.currentTime;
+                gain.gain.setTargetAtTime(volume * 0.4, now, 0.1);
+                gain.gain.setTargetAtTime(0.1, now + 0.2, 0.2);
+            }, 600); // 100bpm脉冲
+
+            osc.start(t);
+            return {
+                stop: () => {
+                    gain.gain.linearRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.5);
+                    setTimeout(() => osc.stop(), 500);
+                }
+            };
+        }
     }
 };

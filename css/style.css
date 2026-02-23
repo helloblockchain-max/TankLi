@@ -137,7 +137,7 @@ body {
 
 /* ===== START SCREEN ===== */
 #screen-start {
-    background: radial-gradient(ellipse at center, #1a1520 0%, #050508 70%);
+    background: url('../assets/img/ui_bg.png') center/cover no-repeat;
     text-align: center;
     overflow: hidden;
 }
@@ -219,7 +219,7 @@ body {
 
 /* ===== GARAGE / TANK SELECTION ===== */
 #screen-garage {
-    background: radial-gradient(ellipse at 50% 30%, rgba(30, 30, 50, 0.98), rgba(5, 5, 10, 0.98));
+    background: url('../assets/img/garage_bg.png') center/cover no-repeat;
 }
 
 #screen-garage h2 {

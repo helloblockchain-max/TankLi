@@ -29,6 +29,7 @@ const GameState = {
         ArrowLeft: false,
         ArrowRight: false,
         w: false, a: false, s: false, d: false,
+        Shift: false, // 冲刺技能键
         Space: false // 用于手动开火（可选）
     },
     mouse: {

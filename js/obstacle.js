@@ -11,6 +11,7 @@ class Obstacle {
         this.radius = typeConf.radius || 30;
         this.color = typeConf.color || '#8bc34a';
         this.hp = typeConf.hp || 50;
+        this.maxHp = this.hp; // 修复：存储初始HP用于血条计算
         this.destructible = typeConf.destructible !== false;
         this.blocksMovement = typeConf.blocksMovement !== false;
         this.blocksBullets = typeConf.blocksBullets !== false;
@@ -28,13 +29,11 @@ class Obstacle {
 
     explode() {
         this.active = false;
-        // 产生碎片粒子
-        // 树木产生绿色碎片，墙壁产生灰色碎片
         const particleColor = this.type === 'tree' ? '#4caf50' : '#9e9e9e';
         for (let i = 0; i < 15; i++) {
             GameState.particles.push(new Particle(this.x, this.y, particleColor));
         }
-        Assets.playSound('explosion', false, 0.3); // 较轻的爆炸声
+        Assets.playSound('explosion', false, 0.3);
     }
 
     draw(ctx) {
@@ -43,29 +42,47 @@ class Obstacle {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // 如果有美术贴图资源
         const img = Assets.images['obs_' + this.type];
         if (img) {
             ctx.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         } else {
-            // 兜底绘制
-            ctx.beginPath();
-            if (this.type === 'wall') {
-                ctx.rect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
-                ctx.fillStyle = this.color || '#795548';
-            } else {
+            if (this.type === 'tree') {
+                // 树干
+                ctx.fillStyle = '#5d4037';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // 树冠
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.85;
+                ctx.beginPath();
                 ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color || '#2e7d32';
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            } else {
+                // 墙壁 - 砖块效果
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+                ctx.strokeStyle = '#3e2723';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+                // 砖缝
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-this.radius, 0);
+                ctx.lineTo(this.radius, 0);
+                ctx.moveTo(0, -this.radius);
+                ctx.lineTo(0, this.radius);
+                ctx.stroke();
             }
-            ctx.fill();
-            ctx.closePath();
 
-            // 绘制血条 (如果是可破坏的且受损)
-            if (this.destructible && this.hp < (this.type === 'tree' ? 50 : 150)) {
+            // 受损血条
+            if (this.destructible && this.hp < this.maxHp) {
                 ctx.fillStyle = '#ff0000';
                 ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2, 4);
                 ctx.fillStyle = '#00ff00';
-                const hpPercent = Math.max(0, this.hp / (this.type === 'tree' ? 50 : 150));
+                const hpPercent = Math.max(0, this.hp / this.maxHp);
                 ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2 * hpPercent, 4);
             }
         }

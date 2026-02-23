@@ -21,17 +21,37 @@ class Bullet {
         this.x += Math.cos(this.angle) * this.speed;
         this.y += Math.sin(this.angle) * this.speed;
 
-        // 飞出屏幕即销毁
-        if (this.x < 0 || this.x > GameConfig.canvasWidth || this.y < 0 || this.y > GameConfig.canvasHeight) {
+        // 飞出地图边界即销毁 (修复：之前用的是视口大小，导致大地图子弹提前消失)
+        if (this.x < -20 || this.x > GameConfig.mapSize.width + 20 || this.y < -20 || this.y > GameConfig.mapSize.height + 20) {
             this.active = false;
         }
     }
 
     draw(ctx) {
+        // 拖尾光效
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        const tailX = this.x - Math.cos(this.angle) * this.radius * 3;
+        const tailY = this.y - Math.sin(this.angle) * this.radius * 3;
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(this.x, this.y);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = this.radius * 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+
+        // 弹头
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
+        // 发光效果
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = this.isAOE ? 15 : 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.closePath();
     }
 }

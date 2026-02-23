@@ -79,9 +79,9 @@ class EnemyTank {
             // 可以加入左右平移逻辑
         }
 
-        // 防御越界
-        this.x = Math.max(this.radius, Math.min(GameConfig.canvasWidth - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(GameConfig.canvasHeight - this.radius, this.y));
+        // 防御越界 (使用地图边界而非视口)
+        this.x = Math.max(this.radius, Math.min(GameConfig.mapSize.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(GameConfig.mapSize.height - this.radius, this.y));
 
         // 3. 射击逻辑
         const now = Date.now();

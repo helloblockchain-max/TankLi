@@ -32,8 +32,11 @@ const Assets = {
     loadAll(onProgress, onComplete) {
         let total = Object.keys(this.manifest.images).length + Object.keys(this.manifest.audio).length;
         let loaded = 0;
+        const completedKeys = new Set(); // 防止重复计数
 
-        const checkComplete = () => {
+        const checkComplete = (key) => {
+            if (completedKeys.has(key)) return; // 已经计算过了跳过
+            completedKeys.add(key);
             loaded++;
             if (onProgress) onProgress(loaded / total);
             if (loaded >= total) {
@@ -46,15 +49,14 @@ const Assets = {
         for (let key in this.manifest.images) {
             const img = new Image();
             img.src = this.manifest.images[key];
-            // 即便失败也继续，避免卡死
             img.onload = () => {
                 this.images[key] = img;
-                checkComplete();
+                checkComplete('img_' + key);
             };
             img.onerror = () => {
-                console.warn(`Image failed to load: ${img.src}. Creating fallback dummy.`);
+                console.warn(`Image failed to load: ${img.src}. Creating fallback.`);
                 this.images[key] = this.createFallbackImage(key);
-                checkComplete();
+                checkComplete('img_' + key);
             }
         }
 
@@ -62,40 +64,138 @@ const Assets = {
         for (let key in this.manifest.audio) {
             const aud = new Audio();
             aud.src = this.manifest.audio[key];
-            // 音频如果可以播放了就认为加载完毕 (对本地/在线流友好)
             aud.oncanplaythrough = () => {
                 this.audio[key] = aud;
-                checkComplete();
+                checkComplete('aud_' + key);
             }
             aud.onerror = () => {
                 console.warn(`Audio failed to load: ${aud.src}. Ignored.`);
-                this.audio[key] = aud; // 存个空壳
-                checkComplete();
+                this.audio[key] = aud;
+                checkComplete('aud_' + key);
             }
-            // 某些浏览器对空白源不会触发事件，加个兜底
-            setTimeout(checkComplete, 2000);
+            // 兆底超时（某些浏览器对空白源不触发事件）
+            setTimeout(() => checkComplete('aud_' + key), 3000);
         }
     },
 
-    // 生成纯色占位图用于Canvas渲染(如果没有真实图片)
+    // 精细的Canvas写实坦克俯视图生成器
     createFallbackImage(key) {
+        const size = 128;
         const c = document.createElement('canvas');
-        c.width = 64; c.height = 64;
+        c.width = size; c.height = size;
         const ctx = c.getContext('2d');
+        const cx = size / 2, cy = size / 2;
 
-        if (key.includes('tiger')) ctx.fillStyle = '#5c5c5c';
-        else if (key.includes('sherman')) ctx.fillStyle = '#4caf50';
-        else if (key.includes('enemy')) ctx.fillStyle = '#ff5252';
-        else if (key.includes('bg')) ctx.fillStyle = '#4a5c4e';
-        else ctx.fillStyle = '#ff00ff'; // 品红表示丢失
-
-        ctx.fillRect(0, 0, 64, 64);
-
-        // 画个箭头表示车头方向（向右，0度）
-        if (!key.includes('bg')) {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(40, 30, 20, 4);
+        if (key.includes('bg')) {
+            // 背景纹理
+            ctx.fillStyle = key.includes('snow') ? '#c0c8cc' : '#4a5c4e';
+            ctx.fillRect(0, 0, size, size);
+            // 噪点
+            for (let i = 0; i < 300; i++) {
+                ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
+                ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+            }
+            const img = new Image(); img.src = c.toDataURL(); return img;
         }
+
+        // --- 坦克配色方案 ---
+        let hullColor, trackColor, accentColor, markingFn;
+
+        if (key.includes('tiger')) {
+            hullColor = '#5c5c5c'; trackColor = '#3a3a3a'; accentColor = '#444';
+            markingFn = () => {
+                // 德国十字
+                ctx.fillStyle = '#222'; ctx.fillRect(cx - 2, cy - 10, 4, 20);
+                ctx.fillRect(cx - 10, cy - 2, 20, 4);
+            };
+        } else if (key.includes('sherman')) {
+            hullColor = '#4a6b3a'; trackColor = '#3a4a2a'; accentColor = '#5a7b4a';
+            markingFn = () => {
+                // 白星
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                    const r = i % 2 === 0 ? 8 : 4;
+                    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+                }
+                ctx.fill();
+            };
+        } else if (key.includes('boss')) {
+            hullColor = '#8b1a1a'; trackColor = '#4a0a0a'; accentColor = '#6b0000';
+            markingFn = () => { };
+        } else if (key.includes('heavy')) {
+            hullColor = '#9e9e9e'; trackColor = '#616161'; accentColor = '#757575';
+            markingFn = () => { };
+        } else if (key.includes('medium')) {
+            hullColor = '#546e7a'; trackColor = '#37474f'; accentColor = '#455a64';
+            markingFn = () => { };
+        } else {
+            hullColor = '#6d4c41'; trackColor = '#4e342e'; accentColor = '#5d4037';
+            markingFn = () => { };
+        }
+
+        // --- 履带 (left/right tracks) ---
+        ctx.fillStyle = trackColor;
+        ctx.fillRect(cx - 28, cy - 30, 12, 60); // 左履带
+        ctx.fillRect(cx + 16, cy - 30, 12, 60); // 右履带
+        // 履带纹理
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+        for (let i = -28; i < 32; i += 6) {
+            ctx.beginPath();
+            ctx.moveTo(cx - 28, cy + i); ctx.lineTo(cx - 16, cy + i); ctx.stroke();
+            ctx.moveTo(cx + 16, cy + i); ctx.lineTo(cx + 28, cy + i); ctx.stroke();
+        }
+
+        // --- 车体 ---
+        ctx.fillStyle = hullColor;
+        // 主体梯形
+        ctx.beginPath();
+        ctx.moveTo(cx - 18, cy - 25);
+        ctx.lineTo(cx + 18, cy - 25);
+        ctx.lineTo(cx + 22, cy - 15);
+        ctx.lineTo(cx + 22, cy + 20);
+        ctx.lineTo(cx + 18, cy + 28);
+        ctx.lineTo(cx - 18, cy + 28);
+        ctx.lineTo(cx - 22, cy + 20);
+        ctx.lineTo(cx - 22, cy - 15);
+        ctx.closePath();
+        ctx.fill();
+
+        // 车体阴影 (深色边缘)
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 车体高光
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillRect(cx - 15, cy - 22, 30, 12);
+
+        // --- 炮塔 ---
+        ctx.fillStyle = accentColor;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 2, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // 炮塔高光
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.beginPath();
+        ctx.arc(cx - 3, cy - 6, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // --- 炮管 (朔右, 0度) ---
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(cx, cy - 4, 38, 5);
+        // 炮口火焰抑制器
+        ctx.fillRect(cx + 35, cy - 6, 5, 9);
+
+        // --- 标记 ---
+        markingFn();
+
+        // --- 车体细节装饰（舱口） ---
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath(); ctx.arc(cx - 8, cy + 12, 4, 0, Math.PI * 2); ctx.fill(); // 驾驶舱
+        ctx.beginPath(); ctx.arc(cx + 8, cy + 12, 3, 0, Math.PI * 2); ctx.fill(); // 副驾驶
 
         const img = new Image();
         img.src = c.toDataURL();

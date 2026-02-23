@@ -10,7 +10,7 @@ const EnemyTypes = {
         damage: 10,
         fireRate: 2000,
         color: '#795548', // 褐色涂装
-        reward: 10 // 战争债券收益
+        reward: 7 // 战争债券收益 (原10，降30%)
     },
     medium: {
         hp: 60,
@@ -18,7 +18,7 @@ const EnemyTypes = {
         damage: 20,
         fireRate: 3000,
         color: '#607d8b', // 蓝灰色
-        reward: 25
+        reward: 17 // 降30%
     },
     heavy: {
         hp: 150,
@@ -26,7 +26,7 @@ const EnemyTypes = {
         damage: 40,
         fireRate: 4000,
         color: '#bdbdbd', // 冰雪白
-        reward: 50
+        reward: 35 // 降30%
     }
 };
 
@@ -177,7 +177,7 @@ class BossTank extends EnemyTank {
             damage: 60,
             fireRate: 200, // 极高射速
             color: '#c62828', // 暗红
-            reward: 1000
+            reward: 700 // 降30%
         });
 
         this.radius = 60; // 巨大体型
